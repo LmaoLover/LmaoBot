@@ -1178,6 +1178,7 @@ class Room:
             room=self
         )
         self._mqueue[i] = msg
+        self._callEvent("onMessage", msg.user, msg)
 
     def _rcmd_u(self, args):
         temp = Struct(**self._mqueue)
@@ -1191,7 +1192,9 @@ class Room:
             del self._mqueue[args[0]]
             msg.attach(self, args[1])
             self._addHistory(msg)
-            self._callEvent("onMessage", msg.user, msg)
+            #move this to _rcmd_b as a hack
+            #this doesn't work because u comes before b sometimes
+            #self._callEvent("onMessage", msg.user, msg)
 
     def _rcmd_i(self, args):
         mtime = float(args[0])
