@@ -345,14 +345,16 @@ class _ANON_PM_OBJECT:
         @type data: str
         @param data: the command string
         """
-        self._callEvent("onRaw", data)
+        #self._callEvent("onRaw", data)
+        if not data:
+            return
         data = data.split(":")
         cmd, args = data[0], data[1:]
         func = "_rcmd_" + cmd
         if hasattr(self, func):
             getattr(self, func)(args)
         elif debug:
-                print("unknown data: " + str(data))
+            print("unknown data: " + str(data))
 
     def _getManager(self): return self._mgr
 
@@ -568,14 +570,16 @@ class PM:
         @type data: str
         @param data: the command string
         """
-        self._callEvent("onRaw", data)
+        #self._callEvent("onRaw", data)
+        if not data:
+            return
         data = data.split(":")
         cmd, args = data[0], data[1:]
         func = "_rcmd_" + cmd
         if hasattr(self, func):
             getattr(self, func)(args)
         elif debug:
-                print("unknown data: " + str(data))
+            print("unknown data: " + str(data))
 
     ####
     # Properties
@@ -1048,13 +1052,15 @@ class Room:
         @param data: the command string
         """
         self._callEvent("onRaw", data)
+        if not data:
+            return
         data = data.split(":")
         cmd, args = data[0], data[1:]
         func = "_rcmd_" + cmd
         if hasattr(self, func):
             getattr(self, func)(args)
         elif debug:
-                print("unknown data: " + str(data))
+            print("unknown data: " + str(data))
 
     ####
     # Received Commands
