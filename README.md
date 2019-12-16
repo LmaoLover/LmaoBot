@@ -2,6 +2,8 @@
 
 Dank meme bot for Chatango
 
+![LmaoBot](https://i.imgur.com/NAi47dM.png)
+
 ## How to Make Bot
 
 ### Use python3 and ch.py
