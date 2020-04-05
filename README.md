@@ -25,7 +25,7 @@ except Exception as e:
 
 ### Chatango will disconnect you
 
-Eventually chatango will just disconnect you from rooms, and usually once this begins it will gradually disconnect you from all rooms over the course of 2-3 minutes.  In our great wisdom we decided to allow this process and restart the bot.
+Eventually chatango will just disconnect you from rooms, and usually once this begins it will gradually disconnect you from all rooms over the course of 2-3 minutes.  Reconnecting the room right away doesn't work using ch.py, so just let bot be dead for a couple minutes and restart the whole thing.
 
 ```python
 def onDisconnect(self, room):
@@ -57,7 +57,7 @@ If your bot crashes a lot then get it together first.
 
 ### Docker
 
-If you use docker already then you don't have to install python libraries manually on your system.
+If you use docker then you don't have to install python libraries manually on your system.
 
 ```bash
 docker build -t lmaobot .

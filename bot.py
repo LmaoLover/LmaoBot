@@ -59,7 +59,7 @@ with open(cwd + '/stash_memes.json','r') as stashjson:
 stash_tuples = [(k, v) for k, v in stash_memes.items()]
 
 link_re = re.compile(r"https?://\S+")
-command_re = re.compile(r"\/\w*")
+command_re = re.compile(r"\/[^\s]*")
 yt_re = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([a-zA-Z0-9_-]{11})")
 imdb_re = re.compile(
@@ -323,6 +323,11 @@ class LmaoBot(ch.RoomManager):
             except Exception as e:
                 logError(room.name, "link", message.body, e)
 
+        elif re.match("ay+ lmao", message_body_lower):
+            self.room_message(room, random_selection(memes['lmao']))
+        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
+            self.room_message(room, random_selection(memes['clam']))
+
         elif command_matches:
             try:
                 command = command_matches.group(0)
@@ -330,10 +335,6 @@ class LmaoBot(ch.RoomManager):
             except:
                 pass
 
-        elif re.match("ay+ lmao", message_body_lower):
-            self.room_message(room, random_selection(memes['lmao']))
-        #elif "lmoa" in message_body_lower:
-        #    self.room_message(room, random_selection(memes['lmoa']))
         elif "church" in message_body_lower or "satan" in message_body_lower:
             self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
