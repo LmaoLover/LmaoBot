@@ -153,7 +153,7 @@ class LmaoBot(ch.RoomManager):
     def onDisconnect(self, room):
         log("status", None, "[{0}] Disconnected".format(room.name))
         self.room_states.pop(room.name, None)
-        self.setTimeout(140, self.stop)
+        self.setTimeout(110, self.stop)
 
     def onReconnect(self, room):
         log("status", None, "[{0}] Reconnected".format(room.name))
@@ -335,6 +335,10 @@ class LmaoBot(ch.RoomManager):
             except:
                 pass
 
+        elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
+            self.room_message(room, "https://lmao.love/infowars")
+        elif "truth" in message_body_lower:
+            self.room_message(room, "https://lmao.love/truth")
         elif "church" in message_body_lower or "satan" in message_body_lower:
             self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
@@ -353,10 +357,10 @@ class LmaoBot(ch.RoomManager):
         elif "!spike" in message_body_lower:
             self.room_message(room, "https://xvsvc.net/emotes/1smoke.gif")
         elif "tyson" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/0tdAxY5.png")
+            self.room_message(room, random_selection(memes['tyson']))
         elif "pika" in message_body_lower:
             self.room_message(room, "https://i.imgur.com/dZxHsel.png")
-        elif "truth" in message_body_lower or "propaganda" in message_body_lower:
+        elif "propaganda" in message_body_lower:
             self.room_message(room, random_selection(memes['korea']))
         elif "xmas" in message_body_lower or "christmas" in message_body_lower:
             self.room_message(room, random_selection(memes['santa']))
