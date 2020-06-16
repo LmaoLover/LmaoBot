@@ -7,6 +7,7 @@ import json
 import yaml
 import random
 import requests
+import twitter
 from lassie import Lassie
 from pytz import timezone
 from calendar import timegm
@@ -53,6 +54,10 @@ with open(cwd + '/countries.yaml','r') as countriesyaml:
 with open(cwd + '/rooms.yaml','r') as roomsyaml:
     chat = yaml.safe_load(roomsyaml)
 
+with open(cwd + '/twitter.yaml','r') as twitteryaml:
+	keys = yaml.safe_load(twitteryaml)
+	tw_api = twitter.Api(**keys, tweet_mode='extended')
+
 with open(cwd + '/stash_memes.json','r') as stashjson:
     stash_memes = json.load(stashjson)
 
@@ -65,7 +70,7 @@ yt_re = re.compile(
 imdb_re = re.compile(
     r"(?:.*\.|.*)imdb.com/(?:t|T)itle(?:\?|/)(..\d+)")
 twitter_re = re.compile(
-    r"twitter.com/[a-zA-Z0-9_]+/status/[0-9]+", re.IGNORECASE)
+    r"twitter.com/[a-zA-Z0-9_]+/status/([0-9]+)", re.IGNORECASE)
 insta_re = re.compile(
     r"instagram.com/p/[a-zA-Z0-9_-]+", re.IGNORECASE)
 
@@ -277,30 +282,50 @@ class LmaoBot(ch.RoomManager):
 
         elif twitter_matches:
             try:
-                tw_html = requests.get('https://'+twitter_matches.group(0)).text
-                dom = html.fromstring(tw_html)
-                desc = next(iter(dom.xpath('//meta[@property="og:description"]/@content')))
-                og_images = dom.xpath('//meta[@property="og:image"]/@content')
-                img = next((img for img in og_images if 'profile_images' not in img), '')
+                status_id = twitter_matches.group(1)
+                tweet = tw_api.GetStatus(status_id, trim_user=True)
+                desc = tweet.full_text
+                img = ''
+                if tweet.media:
+                    img = next(media.media_url for media in tweet.media)
                 if "satan" in desc.lower():
                     self.praise_jesus(room)
                 else:
-                    self.room_message(room, "{}<br/> {}".format(desc[1:-1], img), html=True)
+                    self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
             except Exception as e:
                 logError(room.name, "twitter", message.body, e)
 
+        # twitter is cringe
+        # elif twitter_matches:
+        #     try:
+        #         tw_html = requests.get('https://'+twitter_matches.group(0)).text
+        #         dom = html.fromstring(tw_html)
+        #         desc = next(iter(dom.xpath('//meta[@property="og:description"]/@content')))
+        #         og_images = dom.xpath('//meta[@property="og:image"]/@content')
+        #         img = next((img for img in og_images if 'profile_images' not in img), '')
+        #         if "satan" in desc.lower():
+        #             self.praise_jesus(room)
+        #         else:
+        #             self.room_message(room, "{}<br/> {}".format(desc[1:-1], img), html=True)
+        #     except Exception as e:
+        #         logError(room.name, "twitter", message.body, e)
+
         elif insta_matches:
-            try:
-                fetch = lassie().fetch('https://'+insta_matches.group(0))
-                desc = fetch['title']
-                img = ''
-                if fetch['images']:
-                    urls = (img['src'] for img in fetch['images'] if
-                            'type' in img and img['type'] == 'og:image')
-                    img = next(urls, '')
-                self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
-            except Exception as e:
-                logError(room.name, "insta", message.body, e)
+            self.room_message(room, random_selection(memes['insta']))
+
+        # instagram is cringe
+        # elif insta_matches:
+        #     try:
+        #         fetch = lassie().fetch('https://'+insta_matches.group(0))
+        #         desc = fetch['title']
+        #         img = ''
+        #         if fetch['images']:
+        #             urls = (img['src'] for img in fetch['images'] if
+        #                     'type' in img and img['type'] == 'og:image')
+        #             img = next(urls, '')
+        #         self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
+        #     except Exception as e:
+        #         logError(room.name, "insta", message.body, e)
             
         elif other_image_matches:
             try:

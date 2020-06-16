@@ -109,3 +109,13 @@ mod:
     - lmaochat
 ```
 
+### twitter.yaml for the twitter gods
+
+Tweet text is no longer delivered via HTTP so you need to use the cringe Twitter API.  Create a developer app and put the credentials into `twitter.yaml`:
+
+```
+consumer_key: ...
+consumer_secret: ...
+access_token_key: ...
+access_token_secret: ...
+```
