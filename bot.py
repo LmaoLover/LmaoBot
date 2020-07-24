@@ -227,9 +227,12 @@ class LmaoBot(ch.RoomManager):
 
             rude_messages = ["kys", "get fukt", "shit bot", "fuck you", "fuck off", "fuck ur", "fuck up", "stfu"]
             disrespected = any(rude in message_without_quote for rude in rude_messages)
-            rude_response = ["fix the @{} problem when", "back in your cage @{}"]
+            rude_response = ["fix the @{} problem when", "back in yer cage @{}"]
             if disrespected:
                 self.room_message(room, random_selection(rude_response).format(user.name), delay=2)
+
+        elif room.name in chat['balb'] + chat['dev'] and len(message_body_lower) > 299:
+            self.room_message(room, random_selection(["tl;dr","spam"]), delay=1)
 
         elif yt_matches:
             video_id = yt_matches.group(1)
@@ -353,7 +356,7 @@ class LmaoBot(ch.RoomManager):
         elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
             self.room_message(room, random_selection(memes['clam']))
 
-        elif command_matches:
+        elif command_matches and room.name not in chat['balb']:
             try:
                 command = command_matches.group(0)
                 self.room_message(room, stash_memes[command])
@@ -373,8 +376,8 @@ class LmaoBot(ch.RoomManager):
         elif "!stash" in message_body_lower:
             meme = random_selection(stash_tuples)
             self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True, drop=True)
-        elif "stash" in message_body_lower:
-            self.room_message(room, random_selection(memes['stash']))
+        # elif "stash" in message_body_lower:
+        #     self.room_message(room, random_selection(memes['stash']))
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
             self.room_message(room, "https://i.imgur.com/vyrNpSm.png")
         elif "!phins" in message_body_lower:
@@ -402,8 +405,6 @@ class LmaoBot(ch.RoomManager):
                 self.room_message(room, "https://lmao.love")
         elif room.name in chat['balb'] + chat['dev'] and (lil_cnn or cnn_cnn_cnn):
             self.room_message(room, random_selection(memes['cnn']), delay=1)
-        elif room.name in chat['balb'] + chat['dev'] and len(message_body_lower) > 299:
-            self.room_message(room, random_selection(["tl;dr","spam"]), delay=1)
 
 
 if __name__ == "__main__":
