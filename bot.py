@@ -129,6 +129,10 @@ class LmaoBot(ch.RoomManager):
             if hour in {16, 17, 18, 19} and minute == 0:
                 self.room_message(room, random_selection(memes['four']))
 
+            #hacked for political purposes
+            if hour in {22, 23, 0, 1} and minute == 0 and room.name in chat['balb'] :
+                self.room_message(room, random_selection(memes['biden']))
+
             rest_time = ((60 - minute) * 60) - second
             self.setTimeout(rest_time, self.check_four_twenty, room)
 
@@ -208,7 +212,7 @@ class LmaoBot(ch.RoomManager):
         imdb_matches = imdb_re.search(message.body)
         twitter_matches = twitter_re.search(message.body)
         insta_matches = insta_re.search(message.body)
-        other_links = ["facebook.com", "worldstar", "dailymotion.com", "lmao.love",
+        other_links = ["facebook.com", "worldstar", "dailymotion.com",
                 "liveleak.com", "strawpoll.me", "open.spotify.com", "banned.video"]
         other_image = ["worldstar", "banned.video"]
         other_link_matches = link_matches and any(link_type in link_matches.group(0) for link_type in other_links)
@@ -356,7 +360,7 @@ class LmaoBot(ch.RoomManager):
         elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
             self.room_message(room, random_selection(memes['clam']))
 
-        elif command_matches and room.name not in chat['balb']:
+        elif command_matches:
             try:
                 command = command_matches.group(0)
                 self.room_message(room, stash_memes[command])
