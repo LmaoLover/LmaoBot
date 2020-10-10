@@ -819,6 +819,7 @@ class Room:
         self._owner = None
         self._mods = set()
         self._mqueue = dict()
+        self._uqueue = dict()
         self._history = list()
         self._userlist = list()
         self._firstCommand = True
@@ -1177,8 +1178,22 @@ class Room:
             channels=channels,
             room=self
         )
-        self._mqueue[i] = msg
-        self._callEvent("onMessage", msg.user, msg)
+
+        # check if the msgid was already received
+        temp = Struct(**self._uqueue)
+        if hasattr(temp, i):
+            msgid = getattr(temp, i)
+            if msg.user != self.user:
+                msg.user._fontColor = msg.fontColor
+                msg.user._fontFace = msg.fontFace
+                msg.user._fontSize = msg.fontSize
+                msg.user._nameColor = msg.nameColor
+            del self._uqueue[i]
+            msg.attach(self, msgid)
+            self._addHistory(msg)
+            self._callEvent("onMessage", msg.user, msg)
+        else:
+            self._mqueue[i] = msg
 
     def _rcmd_u(self, args):
         temp = Struct(**self._mqueue)
@@ -1192,9 +1207,10 @@ class Room:
             del self._mqueue[args[0]]
             msg.attach(self, args[1])
             self._addHistory(msg)
-            #move this to _rcmd_b as a hack
-            #this doesn't work because u comes before b sometimes
-            #self._callEvent("onMessage", msg.user, msg)
+            self._callEvent("onMessage", msg.user, msg)
+        # possible this came first (out of order)
+        else:
+            self._uqueue[args[0]] = args[1]
 
     def _rcmd_i(self, args):
         mtime = float(args[0])
