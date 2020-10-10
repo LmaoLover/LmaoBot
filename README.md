@@ -10,7 +10,7 @@ Dank meme bot for Chatango
 
 Look at `Dockerfile` to get see what libraries you need.  We are using an updated version of ch.py: [TheClonerx/ch.py](https://github.com/TheClonerx/ch.py)
 
-Even this version of ch.py has a crucial flaw which we have fixed using [a dank hack](https://github.com/LmaoLover/LmaoBot/commit/c3a5aa8a9dfe120f2320cbcec4a1cc6a6118ccb1).  There will be no PRs for this fix as it does not integrate with the useless features of ch.py.  We only care that `onMessage` is properly called for every message.  If your bot sometimes does not recognize a message it is probably due to this flaw and you should apply the hack. 
+Even this version of ch.py has a crucial flaw which we have fixed using [a dank hack](https://github.com/LmaoLover/LmaoBot/commit/c3a5aa8a9dfe120f2320cbcec4a1cc6a6118ccb1).  This hack did not last and was replaced with [the elaborate hack](https://github.com/LmaoLover/LmaoBot/commit/77adffab35e0d8b1d930a7327b035c3661e8af17).  If your bot sometimes misses messages it is probably due to how ch.py handles `b` and `u` raw messages, so apply the hacks and it will be fixed. 
 
 ### Python exceptions
 
@@ -53,7 +53,7 @@ do
 done
 ```
 
-If your bot crashes a lot then get it together first.
+If your bot crashes too much then don't do this.
 
 ### Docker
 
@@ -111,7 +111,7 @@ mod:
 
 ### twitter.yaml for the twitter gods
 
-Tweet text is no longer delivered via HTTP so you need to use the cringe Twitter API.  Create a developer app and put the credentials into `twitter.yaml`:
+Tweet text is no longer delivered via HTTP so you need to use the shite Twitter API.  Create a developer app and put the credentials into `twitter.yaml`:
 
 ```
 consumer_key: ...
