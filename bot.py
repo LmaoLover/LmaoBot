@@ -16,6 +16,9 @@ from time import gmtime, strftime, sleep
 from urllib.request import urlopen
 from urllib.parse import parse_qs
 from lxml import html
+from youtube_search import YoutubeSearch
+from wolframalpha import Client
+from collections import deque
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -58,6 +61,10 @@ with open(cwd + '/twitter.yaml','r') as twitteryaml:
 	keys = yaml.safe_load(twitteryaml)
 	tw_api = twitter.Api(**keys, tweet_mode='extended')
 
+with open(cwd + '/wolfram.yaml','r') as wolframyaml:
+	keys = yaml.safe_load(wolframyaml)
+	wolfram_client = Client(keys['app_id'])
+
 with open(cwd + '/stash_memes.json','r') as stashjson:
     stash_memes = json.load(stashjson)
 
@@ -91,23 +98,39 @@ class LmaoBot(ch.RoomManager):
             self.setTimeout(delay_time, self.room_message, room, msg, **kwargs)
             return
 
-        previous_msg_time = self.room_states[room.name]['last_msg_time']
-        current_msg_time = timegm(gmtime())
-        time_since_last_msg = current_msg_time - previous_msg_time
+        queue = self.room_states[room.name]['queue']
 
-        if room.name not in chat['mod'] and time_since_last_msg <= 5:
-            just_drop_it = kwargs.pop('drop', None)
-            if just_drop_it != True:
-                try_again_in = 6 - time_since_last_msg
-                self.setTimeout(try_again_in, self.room_message, room, msg, **kwargs)
-            return
+        if not queue:
+            self.setTimeout(0, self.pop_queue, room)
+        queue.append([msg, kwargs])
 
-        self.room_states[room.name]['last_msg_time'] = current_msg_time
-        room.message(msg, **kwargs)
+    def pop_queue(self, room):
+        queue = self.room_states[room.name]['queue']
+
+        if queue:
+            slow_mode = room.name in chat['balb']
+            previous_msg_time = self.room_states[room.name]['last_msg_time']
+            current_msg_time = timegm(gmtime())
+            time_since_last_msg = current_msg_time - previous_msg_time
+
+            if slow_mode and time_since_last_msg < 5:
+                try_again_in = 5 - time_since_last_msg
+                self.setTimeout(try_again_in, self.pop_queue, room)
+                return
+
+            # Sending it
+            msg, kwargs = queue.popleft()
+            self.room_states[room.name]['last_msg_time'] = current_msg_time
+            room.message(msg, **kwargs)
+
+            if queue:
+                try_again_in = 5 if slow_mode else 0
+                self.setTimeout(try_again_in, self.pop_queue, room)
 
     def praise_jesus(self, room):
         jesus_message = random_selection(["Thank You Based Jesus","Praise him","Lost sheep return to me","Praise in his name",
-                                          "Rejoice he has come","Repent and seek him","This is Judea now bitch","Forgiveness"])
+                                          "Rejoice he has come","Repent and seek him","This is Judea now bitch","Forgiveness",
+                                          "✞ C H U R C H ✞","Seek Him","He Endured Death","Eternal Life through Him","TYBJ"])
         jesus_image   = random_selection(memes['jesus'])
         self.room_message(room, "{}<br/> {}".format(jesus_message, jesus_image), html=True)
 
@@ -127,12 +150,12 @@ class LmaoBot(ch.RoomManager):
             minute = minus_twenty.minute
             second = minus_twenty.second
 
-            if hour in {16, 17, 18, 19} and minute == 0:
+            if hour in {16, 17, 18, 19} and minute == 0 and room.name in chat['kek']:
                 self.room_message(room, random_selection(memes['four']))
 
-            #hacked for political purposes
-            if hour in {22, 23, 0, 1} and minute == 0 and room.name in chat['balb'] :
-                self.room_message(room, random_selection(memes['biden']))
+            # double duty ronaldo tax
+            # if hour in {22, 23, 0, 1} and minute == 0 and random_selection([1, 0, 0, 0, 0, 0, 0]) == 1:
+            #     self.room_message(room, random_selection(memes['ronaldo']))
 
             rest_time = ((60 - minute) * 60) - second
             self.setTimeout(rest_time, self.check_four_twenty, room)
@@ -146,17 +169,18 @@ class LmaoBot(ch.RoomManager):
 
             # one hour after it starts
             if hour == 16 and minute == 0 and random_selection([1, 0, 0, 0, 0, 0, 0, 0]) == 1:
-                msg = random_selection(["RIP Kim", "BRO", "Missles armed and ready", "Basketball", "Tennis", "Shen Yun theatre",
-                                        "Production facility", "Flying object", "Naval sightings", "Mexican standoff", "Festival"])
+                msg = random_selection(["Kim Alive and Well", "Missles armed and ready", "Footy Highlights", "Shen Yun theatre",
+                                        "Production facility", "How to Produce Food", "Naval sightings", "Mexican standoff",
+                                        "Festival", "펀 자브 다바", "맞아요게이", "미사일 대피소에 들어가다"])
                 img = random_selection(memes['korea'])
-                self.room_message(room, "{} {} <br/> https://lmao.love/korea/".format(msg, img), html=True)
+                self.room_message(room, "{} <br/> {} <br/> https://lmao.love/korea/".format(msg, img), html=True)
 
             rest_time = ((60 - minute) * 60) - second
             self.setTimeout(rest_time, self.promote_norks, room)
 
     def onConnect(self, room):
         log("status", None, "[{0}] Connected".format(room.name))
-        self.room_states[room.name] = { 'last_msg_time': 0 }
+        self.room_states[room.name] = { 'last_msg_time': 0, 'queue': deque() }
         if room.name in chat['balb'] + chat['kek']:
             self.check_four_twenty(room)
             self.promote_norks(room)
@@ -164,6 +188,7 @@ class LmaoBot(ch.RoomManager):
     def onDisconnect(self, room):
         log("status", None, "[{0}] Disconnected".format(room.name))
         self.room_states.pop(room.name, None)
+        self.leaveRoom(room.name)
         self.setTimeout(110, self.stop)
 
     def onReconnect(self, room):
@@ -192,7 +217,7 @@ class LmaoBot(ch.RoomManager):
     def onMessageDelete(self, room, user, message):
         log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
         if user.name.lower() == "lmaolover" and message.body != "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif":
-            self.room_message(room, "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif", drop=True)
+            self.room_message(room, "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif")
 
     def onMessage(self, room, user, message):
         log(room.name, None, "<{0}> {1}".format(user.name, message.body))
@@ -214,15 +239,15 @@ class LmaoBot(ch.RoomManager):
         imdb_matches = imdb_re.search(message.body)
         twitter_matches = twitter_re.search(message.body)
         insta_matches = insta_re.search(message.body)
-        other_links = ["facebook.com", "worldstar", "dailymotion.com",
-                "liveleak.com", "strawpoll.me", "open.spotify.com", "banned.video"]
-        other_image = ["worldstar", "banned.video"]
+        other_links = ["worldstar", "dailymotion.com", "liveleak.com", "strawpoll.me", "open.spotify.com"]
+        other_image = ["worldstar"]
         other_link_matches = link_matches and any(link_type in link_matches.group(0) for link_type in other_links)
         other_image_matches = other_link_matches and any(link_type in link_matches.group(0) for link_type in other_image)
-        propaganda_links = ["theepochtimes.com", "ntd.com", "revolver.news", "ntdtv.com", "ntdca.com", "75.126.16.248"]
+        propaganda_links = ["theepochtimes.com", "ntd.com", "revolver.news", "ntdtv.com", "ntdca.com", "75.126.16.248",
+                            "infowars.com", "rebelnews.com", "skynews.com.au"]
         propaganda_link_matches = link_matches and any(link_type in link_matches.group(0) for link_type in propaganda_links)
 
-        country_match = next((country for country in countries if country in message_body_lower ), None)
+        country_match = next((country for country in countries if country in message_body_lower), None)
 
         if "@lmaolover" in message_body_lower:
             user_lower = user.name.lower()
@@ -239,39 +264,70 @@ class LmaoBot(ch.RoomManager):
             if disrespected:
                 self.room_message(room, random_selection(rude_response).format(user.name), delay=2)
 
+        elif "lmao?" in message_body_lower:
+            roger_messages = ["sup", "hey girl", "ayyyy", "Let's get this bread", "What you need?", "Yo waddup"]
+            self.room_message(room, random_selection(roger_messages))
+
         elif room.name in chat['balb'] + chat['dev'] and len(message_body_lower) > 299:
             self.room_message(room, random_selection(["tl;dr","spam"]), delay=1)
 
         elif yt_matches:
-            video_id = yt_matches.group(1)
-            yt_api = 'https://youtube.com/get_video_info?video_id=' + video_id
-            with urlopen(yt_api) as response:
-                try:
-                    response_text = response.read().decode('utf-8')
-                    response_qs = parse_qs(response_text)
-                    response_js = json.loads(response_qs['player_response'][0])
-                    video_details = response_js['videoDetails']
-                    title = video_details['title']
-                    rating = video_details['averageRating']
-                    vid_seconds = int(video_details['lengthSeconds'])
-                    yt_img = video_details['thumbnail']['thumbnails'][0]['url']
-                    is_live = video_details['isLiveContent']
-                    if vid_seconds < 3600:
-                        length = strftime("%M:%S", gmtime(vid_seconds))
-                    else:
-                        length = strftime("%H:%M:%S", gmtime(vid_seconds))
-                    if room.name in chat['mod'] and user.name.lower() in ["rangerfrex","drinkingking"]:
-                        room.deleteMessage(message)
-                        the_link = link_matches.group(0)
+            try:
+                search = yt_matches.group(1)
+                if len(search) > 0:
+                    results = YoutubeSearch('"' + search + '"', max_results=1).videos
+                    if len(results) > 0 and results[0]['id'] == search:
+                        result = results[0]
+                        yt_img = result['thumbnails'][0]
+                        title = result['title']
+                        the_link = "https://youtu.be{}".format(result['url_suffix'])
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
-                        if is_live:
-                            self.room_message(room, "{0} [{1:.2f}/5]<br/> {2}".format(title, rating, yt_img), html=True)
+                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Euroland','Illicit material detected',"I ain't clickin that shit"]))
+                else:
+                    pass
+            except Exception as e:
+                logError(room.name, "youtube", message.body, e)
+
+        elif len(message_body_lower) > 2 and message_body_lower[0] == '?' and message_body_lower[1] == '?' and message_body_lower[2] != '?':
+            try:
+                results = wolfram_client.query(message_body_lower[2:].strip())
+                if results['@success']:
+                    first_result = next(results.results, None)
+                    if first_result:
+                        self.room_message(room, first_result.text)
+                    else:
+                        pod_results = None
+                        for pod in results.pods:
+                            if pod.id == 'Results':
+                                pod_results = pod
+                                break
+                        if pod_results:
+                            self.room_message(room, pod_results.subpod.plaintext)
                         else:
-                            self.room_message(room, "{0} ({1}) [{2:.2f}/5]<br/> {3}".format(title, length, rating, yt_img), html=True)
-                    log(room.name, "youtube", "<{0}> {1}::{2}::{3:.2f}".format(user.name, video_id, title, rating))
-                except Exception as e:
-                    logError(room.name, "youtube", message.body, e)
+                            self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","is AI dum or you?","um well ok maybe try again"]))
+                else:
+                    self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","is AI dum or you?","um well ok maybe try again"]))
+            except Exception as e:
+                logError(room.name, "wolframalpha", message.body, e)
+
+        elif len(message_body_lower) > 1 and message_body_lower[0] == '?' and message_body_lower[1] != '?':
+            try:
+                search = message_body_lower[1:].strip()
+                if len(search) > 0:
+                    results = YoutubeSearch(search, max_results=1).videos
+                    if len(results) > 0:
+                        result = results[0]
+                        yt_img = result['thumbnails'][0]
+                        title = result['title']
+                        the_link = "https://youtu.be{}".format(result['url_suffix'])
+                        self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
+                    else:
+                        self.room_message(room, random_selection(['dude wtf is this','nah dude no',"nah we don't got that",'sorry bro, try again']))
+                else:
+                    pass
+            except Exception as e:
+                logError(room.name, "youtube-search", message.body, e)
 
         elif imdb_matches:
             try:
@@ -324,37 +380,8 @@ class LmaoBot(ch.RoomManager):
                 except Exception as e:
                     logError(room.name, "twitter", message.body, e)
 
-        # twitter is cringe
-        # elif twitter_matches:
-        #     try:
-        #         tw_html = requests.get('https://'+twitter_matches.group(0)).text
-        #         dom = html.fromstring(tw_html)
-        #         desc = next(iter(dom.xpath('//meta[@property="og:description"]/@content')))
-        #         og_images = dom.xpath('//meta[@property="og:image"]/@content')
-        #         img = next((img for img in og_images if 'profile_images' not in img), '')
-        #         if "satan" in desc.lower():
-        #             self.praise_jesus(room)
-        #         else:
-        #             self.room_message(room, "{}<br/> {}".format(desc[1:-1], img), html=True)
-        #     except Exception as e:
-        #         logError(room.name, "twitter", message.body, e)
-
         elif insta_matches:
             self.room_message(room, random_selection(memes['insta']))
-
-        # instagram is cringe
-        # elif insta_matches:
-        #     try:
-        #         fetch = lassie().fetch('https://'+insta_matches.group(0))
-        #         desc = fetch['title']
-        #         img = ''
-        #         if fetch['images']:
-        #             urls = (img['src'] for img in fetch['images'] if
-        #                     'type' in img and img['type'] == 'og:image')
-        #             img = next(urls, '')
-        #         self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
-        #     except Exception as e:
-        #         logError(room.name, "insta", message.body, e)
             
         elif propaganda_link_matches and room.name in chat['mod']:
             try:
@@ -405,17 +432,17 @@ class LmaoBot(ch.RoomManager):
 
         elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
             self.room_message(room, "https://lmao.love/infowars")
-        # elif "truth" in message_body_lower:
-        #     self.room_message(room, "https://lmao.love/truth")
         elif "church" in message_body_lower or "satan" in message_body_lower:
             self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
             self.preach_the_gospel(room)
         elif "maga" in message_body_lower and "magazine" not in message_body_lower:
             self.room_message(room, random_selection(memes['trump']))
+        elif "!whatson" in message_body_lower:
+            self.room_message(room, "https://guide.lmao.love/")
         elif "!stash" in message_body_lower:
             meme = random_selection(stash_tuples)
-            self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True, drop=True)
+            self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
         elif "stash" in message_body_lower:
             self.room_message(room, random_selection(memes['stash']))
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
@@ -436,6 +463,12 @@ class LmaoBot(ch.RoomManager):
             self.room_message(room, random_selection(memes['shkreli']))
         elif "jumanji" in message_body_lower:
             self.room_message(room, random_selection(memes['jumanji']))
+        elif "devil?" in message_body_lower:
+            self.room_message(room, "https://i.imgur.com/kz3joDl.jpg")
+        elif "go2bed" in message_body_lower:
+            self.room_message(room, "https://i.imgur.com/hpZ64Zk.jpg")
+        elif "ronaldo" in message_body_lower or "rolando" in message_body_lower or "penaldo" in message_body_lower:
+            self.room_message(room, random_selection(memes['ronaldo']))
         elif "!tv" in message_body_lower:
             if country_match:
                 country_code = countries[country_match]
@@ -443,7 +476,7 @@ class LmaoBot(ch.RoomManager):
                 self.room_message(room, "{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), html=True, delay=1)
             else:
                 self.room_message(room, "https://lmao.love")
-        elif room.name in chat['balb'] + chat['dev'] and (lil_cnn or cnn_cnn_cnn):
+        elif lil_cnn or cnn_cnn_cnn:
             self.room_message(room, random_selection(memes['cnn']), delay=1)
 
 
