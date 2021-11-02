@@ -171,7 +171,7 @@ class LmaoBot(ch.RoomManager):
             if hour == 16 and minute == 0 and random_selection([1, 0, 0, 0, 0, 0, 0, 0]) == 1:
                 msg = random_selection(["Kim Alive and Well", "Missles armed and ready", "Footy Highlights", "Shen Yun theatre",
                                         "Production facility", "How to Produce Food", "Naval sightings", "Mexican standoff",
-                                        "Festival", "펀 자브 다바", "맞아요게이", "미사일 대피소에 들어가다"])
+                                        "Festival", "펀 자브 다바", "맞아요게이", "미사일 대피소에 들어가다","양 사람들을 깨워"])
                 img = random_selection(memes['korea'])
                 self.room_message(room, "{} <br/> {} <br/> https://lmao.love/korea/".format(msg, img), html=True)
 
@@ -275,15 +275,15 @@ class LmaoBot(ch.RoomManager):
             try:
                 search = yt_matches.group(1)
                 if len(search) > 0:
-                    results = YoutubeSearch('"' + search + '"', max_results=1).videos
-                    if len(results) > 0 and results[0]['id'] == search:
-                        result = results[0]
+                    results = YoutubeSearch('"' + search + '"', max_results=5).videos
+                    if len(results) > 0 and next((res for res in results if res['id'] == search), None):
+                        result = next((res for res in results if res['id'] == search), None)
                         yt_img = result['thumbnails'][0]
                         title = result['title']
                         the_link = "https://youtu.be{}".format(result['url_suffix'])
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
-                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Euroland','Illicit material detected',"I ain't clickin that shit"]))
+                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Texas','Illicit material detected',"I ain't clickin that shit"]))
                 else:
                     pass
             except Exception as e:
