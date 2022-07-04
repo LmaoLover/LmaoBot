@@ -58,12 +58,12 @@ with open(cwd + '/rooms.yaml','r') as roomsyaml:
     chat = yaml.safe_load(roomsyaml)
 
 with open(cwd + '/twitter.yaml','r') as twitteryaml:
-	keys = yaml.safe_load(twitteryaml)
-	tw_api = twitter.Api(**keys, tweet_mode='extended')
+    keys = yaml.safe_load(twitteryaml)
+    tw_api = twitter.Api(**keys, tweet_mode='extended')
 
 with open(cwd + '/wolfram.yaml','r') as wolframyaml:
-	keys = yaml.safe_load(wolframyaml)
-	wolfram_client = Client(keys['app_id'])
+    keys = yaml.safe_load(wolframyaml)
+    wolfram_client = Client(keys['app_id'])
 
 with open(cwd + '/stash_memes.json','r') as stashjson:
     stash_memes = json.load(stashjson)
@@ -213,7 +213,7 @@ class LmaoBot(ch.RoomManager):
         #if raw and room.name == "debugroom":
         #    log(room.name, "raw", raw)
         pass
-    
+
     def onMessageDelete(self, room, user, message):
         log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
         if user.name.lower() == "lmaolover" and message.body != "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif":
@@ -229,7 +229,7 @@ class LmaoBot(ch.RoomManager):
 
         if "lmaolover" in message_body_lower:
             log("lmaolover", None, "[{0}] <{1}> {2}".format(room.name, user.name, message.body))
-        
+
         lil_cnn     = "lil" in message_body_lower and "cnn" in message_body_lower
         cnn_cnn_cnn = message_body_lower.split().count('cnn') >= 3
 
@@ -382,7 +382,7 @@ class LmaoBot(ch.RoomManager):
 
         elif insta_matches:
             self.room_message(room, random_selection(memes['insta']))
-            
+
         elif propaganda_link_matches and room.name in chat['mod']:
             try:
                 the_link = link_matches.group(0)
