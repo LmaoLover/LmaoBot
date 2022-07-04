@@ -1,8 +1,6 @@
-import sys
 import os
 import ch
 import re
-import pdb
 import json
 import yaml
 import random
@@ -11,11 +9,8 @@ import twitter
 from lassie import Lassie
 from pytz import timezone
 from calendar import timegm
-from datetime import datetime, time, timedelta
-from time import gmtime, strftime, sleep
-from urllib.request import urlopen
-from urllib.parse import parse_qs
-from lxml import html
+from datetime import datetime, timedelta
+from time import gmtime
 from youtube_search import YoutubeSearch
 from wolframalpha import Client
 from collections import deque
@@ -23,12 +18,14 @@ from collections import deque
 cwd = os.path.dirname(os.path.abspath(__file__))
 
 def lassie():
-    l = Lassie()
-    l.request_opts = { 'timeout': 3 }
-    return l
+    lass = Lassie()
+    lass.request_opts = {'timeout': 3}
+    return lass
+
 
 def random_selection(list):
     return list[random.randint(0, len(list) - 1)]
+
 
 def log(room_name, sub, message):
     if sub:
@@ -41,9 +38,11 @@ def log(room_name, sub, message):
     with open(cwd + "/logs/" + filename, "a") as logfile:
         logfile.write("[{0}] {1}\n".format(time_str, message))
 
+
 def logError(room_name, sub, message_body, e):
     log("errors", None, "[{}] [{}] {}".format(room_name, sub, message_body))
     log("errors", None, "[{}] [{}] {}".format(room_name, sub, repr(e)))
+
 
 memes = {}
 for filename in os.listdir(cwd):
@@ -73,7 +72,7 @@ stash_tuples = [(k, v) for k, v in stash_memes.items()]
 link_re = re.compile(r"https?://\S+")
 command_re = re.compile(r"\/[^\s]*")
 yt_re = re.compile(
-    r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([a-zA-Z0-9_-]{11})")
+    r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})")
 imdb_re = re.compile(
     r"(?:.*\.|.*)imdb.com/(?:t|T)itle(?:\?|/)(..\d+)")
 twitter_re = re.compile(
@@ -93,6 +92,8 @@ class LmaoBot(ch.RoomManager):
         self.setFontSize(11)
 
     def room_message(self, room, msg, **kwargs):
+        msg = msg[:1798]
+
         delay_time = kwargs.pop('delay', None)
         if delay_time:
             self.setTimeout(delay_time, self.room_message, room, msg, **kwargs)
@@ -183,7 +184,7 @@ class LmaoBot(ch.RoomManager):
         self.room_states[room.name] = { 'last_msg_time': 0, 'queue': deque() }
         if room.name in chat['balb'] + chat['kek']:
             self.check_four_twenty(room)
-            self.promote_norks(room)
+            # self.promote_norks(room)
 
     def onDisconnect(self, room):
         log("status", None, "[{0}] Disconnected".format(room.name))
@@ -283,7 +284,7 @@ class LmaoBot(ch.RoomManager):
                         the_link = "https://youtu.be{}".format(result['url_suffix'])
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
-                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Texas','Illicit material detected',"I ain't clickin that shit"]))
+                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Euroland','Illicit material detected',"I ain't clickin that shit"]))
                 else:
                     pass
             except Exception as e:
@@ -305,9 +306,9 @@ class LmaoBot(ch.RoomManager):
                         if pod_results:
                             self.room_message(room, pod_results.subpod.plaintext)
                         else:
-                            self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","is AI dum or you?","um well ok maybe try again"]))
+                            self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","AI is not that advanced","uhh"]))
                 else:
-                    self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","is AI dum or you?","um well ok maybe try again"]))
+                    self.room_message(room, random_selection(["AI can not compute","AI stumped","wot?","AI is not that advanced","uhh"]))
             except Exception as e:
                 logError(room.name, "wolframalpha", message.body, e)
 
@@ -430,8 +431,8 @@ class LmaoBot(ch.RoomManager):
             except:
                 pass
 
-        elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
-            self.room_message(room, "https://lmao.love/infowars")
+        # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
+        #     self.room_message(room, "https://lmao.love/infowars")
         elif "church" in message_body_lower or "satan" in message_body_lower:
             self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
@@ -467,15 +468,17 @@ class LmaoBot(ch.RoomManager):
             self.room_message(room, "https://i.imgur.com/kz3joDl.jpg")
         elif "go2bed" in message_body_lower:
             self.room_message(room, "https://i.imgur.com/hpZ64Zk.jpg")
+        elif "gil2bed" in message_body_lower:
+            self.room_message(room, "https://i.imgur.com/8SwlIv8.png")
         elif "ronaldo" in message_body_lower or "rolando" in message_body_lower or "penaldo" in message_body_lower:
             self.room_message(room, random_selection(memes['ronaldo']))
-        elif "!tv" in message_body_lower:
-            if country_match:
-                country_code = countries[country_match]
-                country_name = country_match.title()
-                self.room_message(room, "{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), html=True, delay=1)
-            else:
-                self.room_message(room, "https://lmao.love")
+        # elif "!tv" in message_body_lower:
+        #     if country_match:
+        #         country_code = countries[country_match]
+        #         country_name = country_match.title()
+        #         self.room_message(room, "{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), html=True, delay=1)
+        #     else:
+        #         self.room_message(room, "https://lmao.love")
         elif lil_cnn or cnn_cnn_cnn:
             self.room_message(room, random_selection(memes['cnn']), delay=1)
 
@@ -498,4 +501,4 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("")
             bot.stop()
-            break;
+            break
