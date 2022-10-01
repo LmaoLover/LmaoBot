@@ -1,3 +1,9 @@
+# Bot secrets
+config.yaml
+rooms.yaml
+twitter.yaml
+wolfram.yaml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

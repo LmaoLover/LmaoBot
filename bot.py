@@ -141,7 +141,7 @@ class LmaoBot(ch.RoomManager):
             fetch = lassie().fetch(the_link)
             self.room_message(room, fetch['description'])
         except Exception as e:
-            logError(room.name, "gospel", message.body, e)
+            logError(room.name, "gospel", "preach", e)
 
     def check_four_twenty(self, room):
         if room.connected:
@@ -217,8 +217,8 @@ class LmaoBot(ch.RoomManager):
 
     def onMessageDelete(self, room, user, message):
         log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
-        if user.name.lower() == "lmaolover" and message.body != "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif":
-            self.room_message(room, "https://media1.giphy.com/media/gSI0RTsif0w1i/giphy.gif")
+        if user.name.lower() == "lmaolover" and message.body != "https://lmao.love/stash/memes/jews.gif":
+            self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
 
     def onMessage(self, room, user, message):
         log(room.name, None, "<{0}> {1}".format(user.name, message.body))
@@ -281,7 +281,8 @@ class LmaoBot(ch.RoomManager):
                         result = next((res for res in results if res['id'] == search), None)
                         yt_img = result['thumbnails'][0]
                         title = result['title']
-                        the_link = "https://youtu.be{}".format(result['url_suffix'])
+                        url_suffix = re.sub(r'shorts\/', 'watch?v=', result['url_suffix'])
+                        the_link = "https://youtu.be{}".format(url_suffix)
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
                         self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Euroland','Illicit material detected',"I ain't clickin that shit"]))
@@ -321,7 +322,8 @@ class LmaoBot(ch.RoomManager):
                         result = results[0]
                         yt_img = result['thumbnails'][0]
                         title = result['title']
-                        the_link = "https://youtu.be{}".format(result['url_suffix'])
+                        url_suffix = re.sub(r'shorts\/', 'watch?v=', result['url_suffix'])
+                        the_link = "https://youtu.be{}".format(url_suffix)
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
                         self.room_message(room, random_selection(['dude wtf is this','nah dude no',"nah we don't got that",'sorry bro, try again']))
@@ -445,7 +447,9 @@ class LmaoBot(ch.RoomManager):
             meme = random_selection(stash_tuples)
             self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
         elif "stash" in message_body_lower:
-            self.room_message(room, random_selection(memes['stash']))
+            meme = random_selection(stash_tuples)
+            self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
+            # self.room_message(room, random_selection(memes['stash']))
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
             self.room_message(room, "https://i.imgur.com/vyrNpSm.png")
         elif "!phins" in message_body_lower:
@@ -458,8 +462,8 @@ class LmaoBot(ch.RoomManager):
             self.room_message(room, "https://i.imgur.com/dZxHsel.png")
         elif "propaganda" in message_body_lower:
             self.room_message(room, random_selection(memes['korea']))
-        elif "xmas" in message_body_lower or "christmas" in message_body_lower:
-            self.room_message(room, random_selection(memes['santa']))
+        # elif "xmas" in message_body_lower or "christmas" in message_body_lower:
+        #     self.room_message(room, random_selection(memes['santa']))
         elif "shkreli" in message_body_lower:
             self.room_message(room, random_selection(memes['shkreli']))
         elif "jumanji" in message_body_lower:
