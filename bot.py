@@ -115,7 +115,7 @@ class LmaoBot(ch.RoomManager):
             time_since_last_msg = current_msg_time - previous_msg_time
 
             if slow_mode and time_since_last_msg < 5:
-                try_again_in = 5 - time_since_last_msg
+                try_again_in = 6 - time_since_last_msg
                 self.setTimeout(try_again_in, self.pop_queue, room)
                 return
 
@@ -429,7 +429,10 @@ class LmaoBot(ch.RoomManager):
         elif command_matches:
             try:
                 command = command_matches.group(0)
-                self.room_message(room, stash_memes[command])
+                if room.name in chat['phil'] and "chop" in command:
+                    self.room_message(room, "https://i.imgur.com/fnAVXWe.gif")
+                else:
+                    self.room_message(room, stash_memes[command])
             except:
                 pass
 
