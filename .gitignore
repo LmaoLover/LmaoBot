@@ -3,6 +3,12 @@ config.yaml
 rooms.yaml
 twitter.yaml
 wolfram.yaml
+docker-compose.yaml
+*_memes.txt
+*_memes.json
+logs/
+misc/
+memes/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

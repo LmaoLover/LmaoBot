@@ -14,6 +14,10 @@ from time import gmtime
 from youtube_search import YoutubeSearch
 from wolframalpha import Client
 from collections import deque
+from dotenv import load_dotenv
+
+load_dotenv()
+import openai
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -250,20 +254,23 @@ class LmaoBot(ch.RoomManager):
 
         country_match = next((country for country in countries if country in message_body_lower), None)
 
-        if "@lmaolover" in message_body_lower:
-            user_lower = user.name.lower()
+        if "@lmaolover" in message_body_lower and "!anon" not in user.name and room.name in chat['kek'] + chat['dev']:
             message_without_quote = re.sub(r"@lmaolover: `.*`", "", message_body_lower)
+            untagged_message = re.sub(r"@lmaolover", "", message_without_quote)
 
-            apologies = ["sry", "sorry", "apolog", "forgive"]
-            repentant = any(apol in message_without_quote for apol in apologies)
-            if repentant:
-                self.room_message(room, "thank you friend", delay=2)
+            if untagged_message.strip() and message_body_lower == message_without_quote:
+                try:
+                    prompt="""
+                    LmaoLover is a gray alien, rapper, pimp and drug dealer.
+                    He always adds jokes to his responses, but is never toxic.
+                    He does not know details about sports and will do a haiku instead.
 
-            rude_messages = ["kys", "get fukt", "shit bot", "fuck you", "fuck off", "fuck ur", "fuck up", "stfu"]
-            disrespected = any(rude in message_without_quote for rude in rude_messages)
-            rude_response = ["fix the @{} problem when", "back in yer cage @{}"]
-            if disrespected:
-                self.room_message(room, random_selection(rude_response).format(user.name), delay=2)
+                    {1}: {0}
+                    LmaoLover:""".format(untagged_message[:160], user.name)
+                    completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=200)
+                    self.room_message(room, "{0}".format(completion.choices[0].text))
+                except Exception as e:
+                    self.room_message(room, "{0}".format(e))
 
         elif "lmao?" in message_body_lower:
             roger_messages = ["sup", "hey girl", "ayyyy", "Let's get this bread", "What you need?", "Yo waddup"]
@@ -277,7 +284,7 @@ class LmaoBot(ch.RoomManager):
                 search = yt_matches.group(1)
                 if len(search) > 0:
                     results = YoutubeSearch('"' + search + '"', max_results=5).videos
-                    if len(results) > 0 and next((res for res in results if res['id'] == search), None):
+                    if len(results) > 0 and next((res for res in results if res["id"] == search), None):
                         result = next((res for res in results if res['id'] == search), None)
                         yt_img = result['thumbnails'][0]
                         title = result['title']
@@ -465,8 +472,8 @@ class LmaoBot(ch.RoomManager):
             self.room_message(room, "https://i.imgur.com/dZxHsel.png")
         elif "propaganda" in message_body_lower:
             self.room_message(room, random_selection(memes['korea']))
-        # elif "xmas" in message_body_lower or "christmas" in message_body_lower:
-        #     self.room_message(room, random_selection(memes['santa']))
+        elif "xmas" in message_body_lower or "christmas" in message_body_lower:
+            self.room_message(room, random_selection(memes['santa']))
         elif "shkreli" in message_body_lower:
             self.room_message(room, random_selection(memes['shkreli']))
         elif "jumanji" in message_body_lower:

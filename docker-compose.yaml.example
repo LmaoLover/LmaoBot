@@ -1,0 +1,9 @@
+version: '3'
+services:
+  lmao:
+    image: lmaobot
+    restart: unless-stopped
+    volumes:
+      - /home/me/LmaoBotFolder:/root/lmaobot
+    environment:
+      - OPENAI_API_KEY=...
