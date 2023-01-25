@@ -267,7 +267,7 @@ class LmaoBot(ch.RoomManager):
 
                     {1}: {0}
                     LmaoLover:""".format(untagged_message[:160], user.name)
-                    completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=200)
+                    completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=280)
                     self.room_message(room, "{0}".format(completion.choices[0].text))
                 except Exception as e:
                     self.room_message(room, "{0}".format(e))
@@ -292,7 +292,7 @@ class LmaoBot(ch.RoomManager):
                         the_link = "https://youtu.be{}".format(url_suffix)
                         self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
                     else:
-                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED in Euroland','Illicit material detected',"I ain't clickin that shit"]))
+                        self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED by Mormon Church','Illicit material detected',"I ain't clickin that shit"]))
                 else:
                     pass
             except Exception as e:
