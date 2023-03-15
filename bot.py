@@ -230,6 +230,9 @@ class LmaoBot(ch.RoomManager):
         if "lmaolover" == user.name.lower():
             return
 
+        if user.name[0] == '!' or user.name[0] == '#':
+            room.deleteMessage(message)
+
         message_body_lower = message.body.lower()
 
         if "lmaolover" in message_body_lower:
@@ -435,7 +438,7 @@ class LmaoBot(ch.RoomManager):
 
         elif command_matches:
             try:
-                command = command_matches.group(0)
+                command = command_matches.group(0).lower()
                 if room.name in chat['phil'] and "chop" in command:
                     self.room_message(room, "https://i.imgur.com/fnAVXWe.gif")
                 else:
