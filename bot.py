@@ -262,18 +262,36 @@ class LmaoBot(ch.RoomManager):
             untagged_message = re.sub(r"@lmaolover", "", message_without_quote)
 
             if untagged_message.strip() and message_body_lower == message_without_quote:
+                racism_mode = False
                 try:
-                    prompt="""
-                    LmaoLover is a gray alien, rapper, pimp and drug dealer.
-                    He always adds jokes to his responses, but is never toxic.
-                    He does not know details about sports and will do a haiku instead.
+                    messages=[
+                        {"role": "system", "content": "You are a gray alien, haiku artist, pimp and drug dealer."},
+                        {"role": "system", "content": "You will do a haiku randomly ten percent of the time."},
+                        {"role": "user", "content": untagged_message[:160]}
+                    ]
+                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.6, max_tokens=340)
+                    response = completion.choices[0].message.content
 
-                    {1}: {0}
-                    LmaoLover:""".format(untagged_message[:160], user.name)
-                    completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=280)
-                    self.room_message(room, "{0}".format(completion.choices[0].text))
+                    if response.startswith("I'm sorry") or "language model" in response:
+                        racism_mode = True
+                    else:
+                        self.room_message(room, "{0}".format(response))
                 except Exception as e:
                     self.room_message(room, "{0}".format(e))
+
+                if racism_mode:
+                    try:
+                        prompt="""
+                        LmaoLover is a gray alien, rapper, pimp and drug dealer.
+                        He always adds jokes to his responses, and is often toxic.
+                        He does not know details about sports and will do a haiku instead.
+
+                        {1}: {0}
+                        LmaoLover:""".format(untagged_message[:160], user.name)
+                        completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=340)
+                        self.room_message(room, "{0}".format(completion.choices[0].text))
+                    except Exception as e:
+                        self.room_message(room, "{0}".format(e))
 
         elif "lmao?" in message_body_lower:
             roger_messages = ["sup", "hey girl", "ayyyy", "Let's get this bread", "What you need?", "Yo waddup"]
@@ -365,7 +383,7 @@ class LmaoBot(ch.RoomManager):
             except Exception as e:
                 logError(room.name, "imdb", message.body, e)
 
-        elif twitter_matches:
+        elif twitter_matches and user.name != 'broiestbro':
             try:
                 status_id = twitter_matches.group(1)
                 tweet = tw_api.GetStatus(status_id, trim_user=True)
