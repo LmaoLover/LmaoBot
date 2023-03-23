@@ -269,13 +269,15 @@ class LmaoBot(ch.RoomManager):
                         {"role": "system", "content": "You will do a haiku randomly ten percent of the time."},
                         {"role": "user", "content": untagged_message[:160]}
                     ]
-                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.6, max_tokens=340)
+                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.6, max_tokens=340, request_timeout=7)
                     response = completion.choices[0].message.content
 
                     if response.startswith("I'm sorry") or "language model" in response:
                         racism_mode = True
                     else:
                         self.room_message(room, "{0}".format(response))
+                except openai.error.Timeout as e:
+                    racism_mode = True
                 except Exception as e:
                     self.room_message(room, "{0}".format(e))
 
@@ -288,8 +290,10 @@ class LmaoBot(ch.RoomManager):
 
                         {1}: {0}
                         LmaoLover:""".format(untagged_message[:160], user.name)
-                        completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=340)
+                        completion = openai.Completion.create(engine="text-davinci-003", prompt=prompt, temperature=0.6, max_tokens=340, request_timeout=10)
                         self.room_message(room, "{0}".format(completion.choices[0].text))
+                    except openai.error.Timeout as e:
+                        self.room_message(room, "AI was too slow sorry mate.")
                     except Exception as e:
                         self.room_message(room, "{0}".format(e))
 
