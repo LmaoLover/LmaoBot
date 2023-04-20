@@ -272,7 +272,7 @@ class LmaoBot(ch.RoomManager):
                     completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages, temperature=0.6, max_tokens=340, request_timeout=7)
                     response = completion.choices[0].message.content
 
-                    if response.startswith("I'm sorry") or "language model" in response:
+                    if response.startswith("I'm sorry") or response.startswith("Sorry") or "language model" in response:
                         racism_mode = True
                     else:
                         self.room_message(room, "{0}".format(response))
