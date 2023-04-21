@@ -232,6 +232,7 @@ class LmaoBot(ch.RoomManager):
 
         if user.name[0] == '!' or user.name[0] == '#':
             room.deleteMessage(message)
+            return
 
         message_body_lower = message.body.lower()
 
@@ -257,7 +258,7 @@ class LmaoBot(ch.RoomManager):
 
         country_match = next((country for country in countries if country in message_body_lower), None)
 
-        if "@lmaolover" in message_body_lower and "!anon" not in user.name and room.name in chat['kek'] + chat['dev']:
+        if "@lmaolover" in message_body_lower and room.name in chat['kek'] + chat['dev']:
             message_without_quote = re.sub(r"@lmaolover: `.*`", "", message_body_lower)
             untagged_message = re.sub(r"@lmaolover", "", message_without_quote)
 
