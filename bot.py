@@ -226,7 +226,10 @@ class LmaoBot(ch.RoomManager):
             self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
 
     def onMessage(self, room, user, message):
-        log(room.name, None, "<{0}> {1}".format(user.name, message.body))
+        if message.channels == ('mod',):
+            log(room.name, "mod", "<{0}> {1}".format(user.name, message.body))
+        else:
+            log(room.name, None, "<{0}> {1}".format(user.name, message.body))
 
         if "lmaolover" == user.name.lower():
             return
