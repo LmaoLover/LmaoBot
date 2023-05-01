@@ -12,6 +12,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from time import gmtime
 from youtube_search import YoutubeSearch
+from urllib.parse import urlparse, urlunparse, parse_qs
 from wolframalpha import Client
 from collections import deque
 from dotenv import load_dotenv
@@ -316,7 +317,13 @@ class LmaoBot(ch.RoomManager):
                         title = result['title']
                         url_suffix = re.sub(r'shorts\/', 'watch?v=', result['url_suffix'])
                         the_link = "https://youtu.be{}".format(url_suffix)
-                        self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
+
+                        # Youtube website started adding "pp" query param so parse and remove for shorter urls
+                        parsed_url = urlparse(the_link)
+                        v = parse_qs(parsed_url.query).get('v', [''])[0]
+                        new_link = urlunparse(parsed_url._replace(query=f'v={v}'))
+
+                        self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, new_link), html=True)
                     else:
                         self.room_message(room, random_selection(['FORBIDDEN video requested','Video BANNED by Mormon Church','Illicit material detected',"I ain't clickin that shit"]))
                 else:
@@ -357,7 +364,13 @@ class LmaoBot(ch.RoomManager):
                         title = result['title']
                         url_suffix = re.sub(r'shorts\/', 'watch?v=', result['url_suffix'])
                         the_link = "https://youtu.be{}".format(url_suffix)
-                        self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, the_link), html=True)
+
+                        # Youtube website started adding "pp" query param so parse and remove for shorter urls
+                        parsed_url = urlparse(the_link)
+                        v = parse_qs(parsed_url.query).get('v', [''])[0]
+                        new_link = urlunparse(parsed_url._replace(query=f'v={v}'))
+
+                        self.room_message(room, "{}<br/> {}<br/> {}".format(yt_img, title, new_link), html=True)
                     else:
                         self.room_message(room, random_selection(['dude wtf is this','nah dude no',"nah we don't got that",'sorry bro, try again']))
                 else:
