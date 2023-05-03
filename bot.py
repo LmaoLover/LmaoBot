@@ -367,6 +367,7 @@ class LmaoBot(ch.RoomManager):
                     if (
                         response.startswith("I'm sorry")
                         or response.startswith("Sorry")
+                        or response.startswith("I apologize")
                         or "language model" in response
                     ):
                         racism_mode = True
