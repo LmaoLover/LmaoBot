@@ -288,7 +288,7 @@ aiohttp = "*"
 [package.source]
 type = "git"
 url = "https://github.com/LmaoLover/chatango-lib.git"
-reference = "HEAD"
+reference = "master"
 resolved_reference = "41b29d8faf09a598b6ac3555e1db1074aa848866"
 
 [[package]]
@@ -980,4 +980,4 @@ requests = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<4.0"
-content-hash = "1b8920750b382c078387e989c195f80735790d335943c80d73d29f7fa343ca8d"
+content-hash = "49cf795831dd8e9a79ff92ab589270c4c1f330eb1542798d1c177db64ae8da21"
