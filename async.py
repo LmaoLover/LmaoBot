@@ -1,16 +1,20 @@
 import os
-import ch
 import re
 import json
 import yaml
 import random
 import requests
 import twitter
+import asyncio
+import chatango
+import logging
+import logging.config
 from lassie import Lassie
 from pytz import timezone
 from calendar import timegm
 from datetime import datetime, timedelta
 from time import gmtime
+from functools import partial
 from youtube_search import YoutubeSearch
 from urllib.parse import urlparse, urlunparse, parse_qs
 from wolframalpha import Client
@@ -19,6 +23,38 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import openai
+
+
+class LowercaseFormatter(logging.Formatter):
+    def format(self, record):
+        record.levelname = record.levelname.lower()
+        return logging.Formatter.format(self, record)
+
+
+logging_config = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {"()": LowercaseFormatter, "format": "[%(levelname)s] %(message)s"},
+    },
+    "handlers": {
+        "default": {
+            "level": "DEBUG",
+            "formatter": "standard",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": ["default"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
+
+logging.config.dictConfig(logging_config)
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -85,19 +121,37 @@ twitter_re = re.compile(r"twitter.com/[a-zA-Z0-9_]+/status/([0-9]+)", re.IGNOREC
 insta_re = re.compile(r"instagram.com/p/[a-zA-Z0-9_-]+", re.IGNORECASE)
 
 
-class LmaoBot(ch.RoomManager):
-    def __init__(self, name=None, password=None, pm=True):
-        ch.RoomManager.__init__(self, name, password, pm)
+# TODO add helpers to client: delay, sync, io sync in thread
+async def delayed_sync(delay, func, *args, **kwargs):
+    await asyncio.sleep(delay)
+    # Just run the function assuming it doesn't block
+    return func(*args, **kwargs)
+
+
+async def thread(func, *args, **kwargs):
+    loop = asyncio.get_running_loop()
+    partial_func = partial(func, *args, **kwargs)
+    return await loop.run_in_executor(None, partial_func)
+
+
+class LmaoBot(chatango.Client):
+    def setTimeout(self, delay, func, *args, **kwargs):
+        self.add_task(delayed_sync(delay, func, *args, **kwargs))
+
+    async def on_init(self):
         self.room_states = {}
 
-    def onInit(self):
-        self.setNameColor("000000")
-        self.setFontColor("000000")
-        self.setFontFace("sans-serif")
-        self.setFontSize(11)
+    async def on_room_init(self, room):
+        await room.user.get_profile()
+        await room.enable_bg()
 
     def room_message(self, room, msg, **kwargs):
         msg = msg[:1798]
+
+        # hack for porting to chatango-lib
+        if kwargs.get("html"):
+            kwargs["use_html"] = True
+            kwargs.pop("html")
 
         delay_time = kwargs.pop("delay", None)
         if delay_time:
@@ -127,7 +181,7 @@ class LmaoBot(ch.RoomManager):
             # Sending it
             msg, kwargs = queue.popleft()
             self.room_states[room.name]["last_msg_time"] = current_msg_time
-            room.message(msg, **kwargs)
+            self.add_task(room.send_message(msg, **kwargs))
 
             if queue:
                 try_again_in = 5 if slow_mode else 0
@@ -156,10 +210,10 @@ class LmaoBot(ch.RoomManager):
             room, "{}<br/> {}".format(jesus_message, jesus_image), html=True
         )
 
-    def preach_the_gospel(self, room):
+    async def preach_the_gospel(self, room):
         try:
             the_link = "http://bibledice.com/scripture.php"
-            fetch = lassie().fetch(the_link)
+            fetch = await thread(lassie().fetch, the_link)
             self.room_message(room, fetch["description"])
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
@@ -222,72 +276,77 @@ class LmaoBot(ch.RoomManager):
             rest_time = ((60 - minute) * 60) - second
             self.setTimeout(rest_time, self.promote_norks, room)
 
-    def onConnect(self, room):
-        log("status", None, "[{0}] Connected".format(room.name))
+    async def on_connect(self, room: chatango.Room):
+        # log("status", None, "[{0}] Connected".format(room.name))
         self.room_states[room.name] = {"last_msg_time": 0, "queue": deque()}
         if room.name in chat["balb"] + chat["kek"]:
             self.check_four_twenty(room)
             # self.promote_norks(room)
 
-    def onDisconnect(self, room):
-        log("status", None, "[{0}] Disconnected".format(room.name))
+    async def on_disconnect(self, room):
+        # log("status", None, "[{0}] Disconnected".format(room.name))
         self.room_states.pop(room.name, None)
-        self.leaveRoom(room.name)
-        self.setTimeout(110, self.stop)
 
-    def onReconnect(self, room):
-        log("status", None, "[{0}] Reconnected".format(room.name))
-
-    def onBan(self, room, user, target):
+    async def on_ban(self, room, user, target):
         log("bans", None, "[{}] {} banned {}".format(room.name, user.name, target.name))
 
-    def onUnban(self, room, user, target):
+    async def on_unban(self, room, user, target):
         log(
             "bans",
             None,
             "[{}] {} unbanned {}".format(room.name, user.name, target.name),
         )
 
-    def onFloodWarning(self, room):
-        log("flood", None, "[{}] flood warning".format(room.name))
+    # TODO flood related handlers
+    # def onFloodWarning(self, room):
+    #     log("flood", None, "[{}] flood warning".format(room.name))
 
-    def onFloodBan(self, room):
-        log("flood", None, "[{}] flood ban".format(room.name))
+    # def onFloodBan(self, room):
+    #     log("flood", None, "[{}] flood ban".format(room.name))
 
-    def onFloodBanRepeat(self, room):
-        log("flood", None, "[{}] flood ban repeat".format(room.name))
+    # def onFloodBanRepeat(self, room):
+    #     log("flood", None, "[{}] flood ban repeat".format(room.name))
 
-    def onRaw(self, room, raw):
-        # if raw and room.name == "debugroom":
-        #    log(room.name, "raw", raw)
-        pass
+    # TODO create raw handler
+    # def onRaw(self, room, raw):
+    #     # if raw and room.name == "debugroom":
+    #     #    log(room.name, "raw", raw)
+    #     pass
 
-    def onMessageDelete(self, room, user, message):
-        log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
-        if (
-            user.name.lower() == "lmaolover"
-            and message.body != "https://lmao.love/stash/memes/jews.gif"
-        ):
-            self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
+    # TODO message delete handler (lib doesn't include room)
+    # def onMessageDelete(self, room, user, message):
+    #     log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
+    #     if (
+    #         user.name.lower() == "lmaolover"
+    #         and message.body != "https://lmao.love/stash/memes/jews.gif"
+    #     ):
+    #         self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
 
-    def onMessage(self, room, user, message):
-        if message.channels == ("mod",):
+    # TODO fix the blocking/waiting callback problem
+    async def on_message(self, message):
+        self.add_task(self.do_message(message))
+
+    async def do_message(self, message):
+        user: chatango.User = message.user
+        room: chatango.Room = message.room
+        message_body_lower: str = message.body.lower()
+        bot_user_lower: str = self.username.lower()
+
+        if chatango.MessageFlags.CHANNEL_MOD in message.flags:
             log(room.name, "mod", "<{0}> {1}".format(user.name, message.body))
         else:
             log(room.name, None, "<{0}> {1}".format(user.name, message.body))
 
-        if "lmaolover" == user.name.lower():
+        if user.isanon:
+            await room.delete_message(message)
             return
 
-        if user.name[0] == "!" or user.name[0] == "#":
-            room.deleteMessage(message)
+        if user.name.lower() == bot_user_lower:
             return
 
-        message_body_lower = message.body.lower()
-
-        if "lmaolover" in message_body_lower:
+        if bot_user_lower in message_body_lower:
             log(
-                "lmaolover",
+                bot_user_lower,
                 None,
                 "[{0}] <{1}> {2}".format(room.name, user.name, message.body),
             )
@@ -335,7 +394,7 @@ class LmaoBot(ch.RoomManager):
         )
 
         if (
-            "@lmaolover" in message_body_lower
+            f"@{bot_user_lower}" in message_body_lower
             and room.name in chat["kek"] + chat["dev"]
         ):
             message_without_quote = re.sub(r"@lmaolover: `.*`", "", message_body_lower)
@@ -355,7 +414,8 @@ class LmaoBot(ch.RoomManager):
                         },
                         {"role": "user", "content": untagged_message[:160]},
                     ]
-                    completion = openai.ChatCompletion.create(
+                    completion = await thread(
+                        openai.ChatCompletion.create,
                         model="gpt-3.5-turbo",
                         messages=messages,
                         temperature=0.6,
@@ -389,7 +449,8 @@ class LmaoBot(ch.RoomManager):
                         LmaoLover:""".format(
                             untagged_message[:160], user.name
                         )
-                        completion = openai.Completion.create(
+                        completion = await thread(
+                            openai.Completion.create,
                             engine="text-davinci-003",
                             prompt=prompt,
                             temperature=0.6,
@@ -404,25 +465,14 @@ class LmaoBot(ch.RoomManager):
                     except Exception as e:
                         self.room_message(room, "{0}".format(e))
 
-        elif "lmao?" in message_body_lower:
-            roger_messages = [
-                "sup",
-                "hey girl",
-                "ayyyy",
-                "Let's get this bread",
-                "What you need?",
-                "Yo waddup",
-            ]
-            self.room_message(room, random_selection(roger_messages))
-
-        elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
-            self.room_message(room, random_selection(["tl;dr", "spam"]), delay=1)
-
         elif yt_matches:
             try:
                 search = yt_matches.group(1)
                 if len(search) > 0:
-                    results = YoutubeSearch('"' + search + '"', max_results=5).videos
+                    videos = await thread(
+                        YoutubeSearch, '"' + search + '"', max_results=5
+                    )
+                    results = videos.videos
                     if len(results) > 0 and next(
                         (res for res in results if res["id"] == search), None
                     ):
@@ -470,7 +520,9 @@ class LmaoBot(ch.RoomManager):
             and message_body_lower[2] != "?"
         ):
             try:
-                results = wolfram_client.query(message_body_lower[2:].strip())
+                results = await thread(
+                    wolfram_client.query, message_body_lower[2:].strip()
+                )
                 if results["@success"]:
                     first_result = next(results.results, None)
                     if first_result:
@@ -520,7 +572,8 @@ class LmaoBot(ch.RoomManager):
             try:
                 search = message_body_lower[1:].strip()
                 if len(search) > 0:
-                    results = YoutubeSearch(search, max_results=1).videos
+                    videos = await thread(YoutubeSearch, search, max_results=1)
+                    results = videos.videos
                     if len(results) > 0:
                         result = results[0]
                         yt_img = result["thumbnails"][0]
@@ -561,7 +614,7 @@ class LmaoBot(ch.RoomManager):
             try:
                 video_id = imdb_matches.group(1)
                 imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&i=" + video_id
-                imdb_resp = requests.get(imdb_api, timeout=3)
+                imdb_resp = await thread(requests.get, imdb_api, timeout=3)
                 imdb_resp.raise_for_status()
 
                 imdb_info = imdb_resp.json()
@@ -594,7 +647,7 @@ class LmaoBot(ch.RoomManager):
         elif twitter_matches and user.name != "broiestbro":
             try:
                 status_id = twitter_matches.group(1)
-                tweet = tw_api.GetStatus(status_id, trim_user=True)
+                tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
                 desc = tweet.full_text
                 img = ""
                 if tweet.media:
@@ -607,7 +660,7 @@ class LmaoBot(ch.RoomManager):
                 # just try again for connection error
                 try:
                     status_id = twitter_matches.group(1)
-                    tweet = tw_api.GetStatus(status_id, trim_user=True)
+                    tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
                     desc = tweet.full_text
                     img = ""
                     if tweet.media:
@@ -621,19 +674,16 @@ class LmaoBot(ch.RoomManager):
                 except Exception as e:
                     logError(room.name, "twitter", message.body, e)
 
-        elif insta_matches:
-            self.room_message(room, random_selection(memes["insta"]))
-
         elif propaganda_link_matches and room.name in chat["mod"]:
             try:
                 the_link = link_matches.group(0)
-                fetch = lassie().fetch(the_link, favicon=False)
+                fetch = await thread(lassie().fetch, the_link, favicon=False)
                 desc = fetch["title"]
                 img = ""
                 if fetch["images"]:
                     urls = (img["src"] for img in fetch["images"])
                     img = next(urls, "")
-                room.deleteMessage(message)
+                await room.delete_message(message)
                 self.room_message(
                     room, "{}<br/> {}<br/> {}".format(img, desc, the_link), html=True
                 )
@@ -642,7 +692,7 @@ class LmaoBot(ch.RoomManager):
 
         elif other_image_matches:
             try:
-                fetch = lassie().fetch(link_matches.group(0))
+                fetch = await thread(lassie().fetch, link_matches.group(0))
                 desc = fetch["title"]
                 img = ""
                 if fetch["images"]:
@@ -659,7 +709,7 @@ class LmaoBot(ch.RoomManager):
         elif other_link_matches:
             try:
                 the_link = link_matches.group(0)
-                fetch = lassie().fetch(the_link)
+                fetch = await thread(lassie().fetch, the_link)
                 self.room_message(room, fetch["title"])
             except Exception as e:
                 logError(room.name, "link", message.body, e)
@@ -679,12 +729,27 @@ class LmaoBot(ch.RoomManager):
             except:
                 pass
 
+        elif "lmao?" in message_body_lower:
+            roger_messages = [
+                "sup",
+                "hey girl",
+                "ayyyy",
+                "Let's get this bread",
+                "What you need?",
+                "Yo waddup",
+            ]
+            self.room_message(room, random_selection(roger_messages))
+
+        elif insta_matches:
+            self.room_message(room, random_selection(memes["insta"]))
+        elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
+            self.room_message(room, random_selection(["tl;dr", "spam"]), delay=1)
         # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
         #     self.room_message(room, "https://lmao.love/infowars")
         elif "church" in message_body_lower or "satan" in message_body_lower:
             self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
-            self.preach_the_gospel(room)
+            await self.preach_the_gospel(room)
         elif "maga" in message_body_lower and "magazine" not in message_body_lower:
             self.room_message(room, random_selection(memes["trump"]))
         elif "!whatson" in message_body_lower:
@@ -748,13 +813,16 @@ if __name__ == "__main__":
     else:
         rooms = config["rooms"]["dev"]
 
-    while True:
-        bot = LmaoBot(config["username"], config["password"])
-        try:
-            for room in rooms:
-                bot.joinRoom(room)
-            bot.main()
-        except KeyboardInterrupt:
-            print("")
-            bot.stop()
-            break
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    bot = LmaoBot(config["username"], config["password"], rooms)
+    task = loop.create_task(bot.run())
+
+    try:
+        loop.run_until_complete(task)
+    except KeyboardInterrupt:
+        print("[KeyboardInterrupt] Killed bot.")
+    finally:
+        task.cancel()
+        loop.close()
