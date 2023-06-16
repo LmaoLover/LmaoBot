@@ -442,7 +442,7 @@ Request:
                         model="gpt-3.5-turbo",
                         messages=messages,
                         temperature=0.6,
-                        max_tokens=340,
+                        max_tokens=1500,
                         request_timeout=25,
                     )
                     response = completion.choices[0].message.content
@@ -477,14 +477,14 @@ Request:
                             engine="text-davinci-003",
                             prompt=prompt,
                             temperature=0.6,
-                            max_tokens=340,
+                            max_tokens=640,
                             request_timeout=16,
                         )
                         self.room_message(
                             room, "{0}".format(completion.choices[0].text)
                         )
                     except openai.error.Timeout as e:
-                        self.room_message(room, "AI was too slow sorry mate.")
+                        self.room_message(room, "AI was too retarded sorry @{0}.".format(user.name))
                     except Exception as e:
                         self.room_message(room, "{0}".format(e))
 
