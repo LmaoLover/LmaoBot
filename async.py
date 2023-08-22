@@ -667,35 +667,36 @@ Request:
             except Exception as e:
                 logError(room.name, "imdb", message.body, e)
 
-        elif twitter_matches and user.name != "broiestbro":
-            try:
-                status_id = twitter_matches.group(1)
-                tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
-                desc = tweet.full_text
-                img = ""
-                if tweet.media:
-                    img = next(media.media_url_https for media in tweet.media)
-                if "satan" in desc.lower():
-                    self.praise_jesus(room)
-                else:
-                    self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
-            except Exception as e:
-                # just try again for connection error
-                try:
-                    status_id = twitter_matches.group(1)
-                    tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
-                    desc = tweet.full_text
-                    img = ""
-                    if tweet.media:
-                        img = next(media.media_url for media in tweet.media)
-                    if "satan" in desc.lower():
-                        self.praise_jesus(room)
-                    else:
-                        self.room_message(
-                            room, "{}<br/> {}".format(desc, img), html=True
-                        )
-                except Exception as e:
-                    logError(room.name, "twitter", message.body, e)
+        # Twitter removed api access
+        # elif twitter_matches:
+        #     try:
+        #         status_id = twitter_matches.group(1)
+        #         tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
+        #         desc = tweet.full_text
+        #         img = ""
+        #         if tweet.media:
+        #             img = next(media.media_url_https for media in tweet.media)
+        #         if "satan" in desc.lower():
+        #             self.praise_jesus(room)
+        #         else:
+        #             self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
+        #     except Exception as e:
+        #         # just try again for connection error
+        #         try:
+        #             status_id = twitter_matches.group(1)
+        #             tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
+        #             desc = tweet.full_text
+        #             img = ""
+        #             if tweet.media:
+        #                 img = next(media.media_url for media in tweet.media)
+        #             if "satan" in desc.lower():
+        #                 self.praise_jesus(room)
+        #             else:
+        #                 self.room_message(
+        #                     room, "{}<br/> {}".format(desc, img), html=True
+        #                 )
+        #         except Exception as e:
+        #             logError(room.name, "twitter", message.body, e)
 
         elif propaganda_link_matches and room.name in chat["mod"]:
             try:
