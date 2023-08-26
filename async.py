@@ -742,11 +742,13 @@ Request:
             self.room_message(room, random_selection(memes["lmao"]))
         elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
             self.room_message(room, random_selection(memes["clam"]))
+        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
+            self.room_message(room, random_selection(memes["lmoa"]))
 
         elif command_matches:
             try:
                 command = command_matches.group(0).lower()
-                if room.name in chat["phil"] and "chop" in command:
+                if room.name in chat["phil"] and ("chop" in command or command == "/dink"):
                     self.room_message(room, "https://i.imgur.com/fnAVXWe.gif")
                 else:
                     self.room_message(room, stash_memes[command])
@@ -781,6 +783,9 @@ Request:
         elif "!stash" in message_body_lower:
             meme = random_selection(stash_tuples)
             self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
+        elif "newstash" in message_body_lower:
+            latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
+            self.room_message(room, "{}".format(latest_names))
         elif "stash" in message_body_lower:
             meme = random_selection(stash_tuples)
             self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
