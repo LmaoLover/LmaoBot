@@ -233,8 +233,8 @@ class LmaoBot(chatango.Client):
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
 
-    def check_four_twenty(self, room):
-        if room.connected:
+    async def check_four_twenty(self, room):
+        while room.connected:
             this_moment = datetime.now(timezone("America/New_York"))
             minus_twenty = this_moment - timedelta(minutes=20)
             hour = minus_twenty.hour
@@ -244,15 +244,14 @@ class LmaoBot(chatango.Client):
             if hour in {16, 17, 18, 19} and minute == 0 and room.name in chat["kek"]:
                 self.room_message(room, random_selection(memes["four"]))
 
-            # double duty ronaldo tax
-            # if hour in {22, 23, 0, 1} and minute == 0 and random_selection([1, 0, 0, 0, 0, 0, 0]) == 1:
-            #     self.room_message(room, random_selection(memes['ronaldo']))
-
             rest_time = ((60 - minute) * 60) - second
-            self.setTimeout(rest_time, self.check_four_twenty, room)
+            try:
+                await asyncio.sleep(rest_time)
+            except asyncio.exceptions.CancelledError:
+                break
 
-    def promote_norks(self, room):
-        if room.connected:
+    async def promote_norks(self, room):
+        while room.connected:
             this_moment = datetime.now(timezone("Asia/Pyongyang"))
             hour = this_moment.hour
             minute = this_moment.minute
@@ -268,7 +267,7 @@ class LmaoBot(chatango.Client):
                     [
                         "Kim Alive and Well",
                         "Missles armed and ready",
-                        "Footy Highlights",
+                        "Forty Foot Giants",
                         "Shen Yun theatre",
                         "Production facility",
                         "How to Produce Food",
@@ -284,25 +283,34 @@ class LmaoBot(chatango.Client):
                 img = random_selection(memes["korea"])
                 self.room_message(
                     room,
-                    "{} <br/> {} <br/> https://lmao.love/korea/".format(msg, img),
+                    "{} <br/> {}".format(msg, img),
                     html=True,
                 )
 
             rest_time = ((60 - minute) * 60) - second
-            self.setTimeout(rest_time, self.promote_norks, room)
+            try:
+                await asyncio.sleep(rest_time)
+            except asyncio.exceptions.CancelledError:
+                break
 
     async def on_connect(self, room: chatango.Room):
         # log("status", None, "[{0}] Connected".format(room.name))
-        self.room_states[room.name] = {"last_msg_time": 0, "queue": deque()}
-        if room.name in chat["balb"] + chat["kek"]:
-            self.check_four_twenty(room)
-            # self.promote_norks(room)
+        self.room_states[room.name] = {
+            "last_msg_time": 0,
+            "queue": deque(),
+            "tasks": [
+                asyncio.create_task(self.check_four_twenty(room)),
+                asyncio.create_task(self.promote_norks(room)),
+            ],
+        }
 
         # Hack a smaller history size
         room._history = deque(maxlen=50)
 
     async def on_disconnect(self, room):
         # log("status", None, "[{0}] Disconnected".format(room.name))
+        for task in self.room_states[room.name]["tasks"]:
+            task.cancel()
         self.room_states.pop(room.name, None)
 
     async def on_ban(self, room, user, target):
