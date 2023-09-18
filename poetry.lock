@@ -267,7 +267,7 @@ files = [
 
 [[package]]
 name = "chatango-lib"
-version = "1.4.1"
+version = "1.4.3"
 description = "A Python library for connecting to Chatango"
 optional = false
 python-versions = ">=3.6"
@@ -281,7 +281,7 @@ aiohttp = "*"
 type = "git"
 url = "https://github.com/LmaoLover/chatango-lib.git"
 reference = "master"
-resolved_reference = "ade03030dc6e8896aa2242ef13a88a9c327e9a92"
+resolved_reference = "5420a890f15ce0e262254d677b3a60b593530682"
 
 [[package]]
 name = "colorama"

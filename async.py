@@ -339,14 +339,21 @@ class LmaoBot(chatango.Client):
     #     #    log(room.name, "raw", raw)
     #     pass
 
-    # TODO message delete handler (lib doesn't include room)
-    # def onMessageDelete(self, room, user, message):
-    #     log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
-    #     if (
-    #         user.name.lower() == "lmaolover"
-    #         and message.body != "https://lmao.love/stash/memes/jews.gif"
-    #     ):
-    #         self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
+    async def on_delete_message(self, message):
+        user: chatango.User = message.user
+        room: chatango.Room = message.room
+        log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
+        if (
+            user.name.lower() == "lmaolover"
+            and message.body != "https://lmao.love/stash/memes/jews.gif"
+        ):
+            self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
+
+    async def on_delete_user(self, messages):
+        for message in messages:
+            user: chatango.User = message.user
+            room: chatango.Room = message.room
+            log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
 
     # TODO fix the blocking/waiting callback problem
     async def on_message(self, message):
