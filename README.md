@@ -6,11 +6,17 @@ Dank meme bot for Chatango
 
 ## How to Make Bot
 
-### Use python3 and ch.py
+### Use python >=3.8.1 and chatango-lib
 
-Look at `Dockerfile` to get see what libraries you need.  We are using an updated version of ch.py: [TheClonerx/ch.py](https://github.com/TheClonerx/ch.py)
+Look at `requirements.txt` to get see what libraries you need.  The current bot is `async.py` and uses a modified version of chatango-lib: [LmaoLover/chatango-lib](https://github.com/LmaoLover/chatango-lib)
 
-Even this version of ch.py has a crucial flaw which we have fixed using [a dank hack](https://github.com/LmaoLover/LmaoBot/commit/c3a5aa8a9dfe120f2320cbcec4a1cc6a6118ccb1).  This hack did not last and was replaced with [the elaborate hack](https://github.com/LmaoLover/LmaoBot/commit/77adffab35e0d8b1d930a7327b035c3661e8af17).  If your bot sometimes misses messages it is probably due to how ch.py handles `b` and `u` raw messages, so apply the hacks and it will be fixed. 
+This library uses `asyncio` and has many advantages over the old version, but requires working in async style.
+
+### About ch.py
+
+The old version is `bot.py` which uses an updated version of ch.py: [TheClonerx/ch.py](https://github.com/TheClonerx/ch.py)
+
+This library has issues with reconnecting when kicked from the chatango servers, and cannot handle messages in parallel.
 
 ### Python exceptions
 
@@ -21,23 +27,6 @@ try:
   ...
 except Exception as e:
   logError(room.name, "twitter", message.body, e)
-```
-
-### Chatango will disconnect you
-
-Eventually chatango will just disconnect you from rooms, and usually once this begins it will gradually disconnect you from all rooms over the course of 2-3 minutes.  Reconnecting the room right away doesn't work using ch.py, so just let bot be dead for a couple minutes and restart the whole thing.
-
-```python
-def onDisconnect(self, room):
-    # tell ch.py to wait a few minutes then stop
-    self.setTimeout(169, self.stop)
-```
-
-```python
-# Start your bot inside infinite loop
-while True:
-  ...
-  bot.main()
 ```
 
 ### Infinite Bot
