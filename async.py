@@ -313,6 +313,9 @@ class LmaoBot(chatango.Client):
             task.cancel()
         self.room_states.pop(room.name, None)
 
+    async def on_denied(self, room):
+        log("status", None, "[{0}] Denied".format(room.name))
+
     async def on_ban(self, room, user, target):
         log("bans", None, "[{}] {} banned {}".format(room.name, user.name, target.name))
 
@@ -388,7 +391,7 @@ class LmaoBot(chatango.Client):
         cnn_cnn_cnn = message_body_lower.split().count("cnn") >= 3
 
         link_matches = link_re.search(message.body)
-        command_matches = command_re.search(message.body)
+        command_matches = command_re.findall(message.body)
         yt_matches = yt_re.search(message.body)
         imdb_matches = imdb_re.search(message.body)
         twitter_matches = twitter_re.search(message.body)
@@ -812,15 +815,20 @@ LmaoLover:""".format(
 
         elif command_matches:
             try:
-                command = command_matches.group(0).lower()
-                if room.name in chat["phil"] and (
-                    "chop" in command or command == "/dink"
-                ):
-                    self.room_message(room, "https://i.imgur.com/fnAVXWe.gif")
-                else:
-                    self.room_message(room, stash_memes[command])
+                cmd_matches = [cmd.lower() for cmd in command_matches[:3]]
+                # remove ticks from quoting
+                cmd_matches = [s[:-1] if s.endswith("`") else s for s in cmd_matches]
+                links = []
+                for cmd in cmd_matches:
+                    if room.name in chat["phil"] and ("chop" in cmd or cmd == "/dink"):
+                        links.append("https://i.imgur.com/fnAVXWe.gif")
+                    else:
+                        links.extend(stash_memes.get(cmd, "").split())
+                send_msg = "\n" + " ".join(links[:3])
+                if send_msg.strip():
+                    self.room_message(room, send_msg)
             except:
-                pass
+                logError(room.name, "command", message.body, e)
 
         elif "lmao?" in message_body_lower:
             roger_messages = [
