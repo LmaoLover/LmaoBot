@@ -430,9 +430,11 @@ class LmaoBot(chatango.Client):
             f"@{bot_user_lower}" in message_body_lower
             and room.name in chat["kek"] + chat["dev"]
         ):
+            if chatango.MessageFlags.CHANNEL_MOD in message.flags:
+                self.room_message(room, stash_memes["/petcat"])
+                return
+
             fallback_mode = False
-            if message.flags == 32768:
-                fallback_mode = True
 
             message_without_quote = re.sub(
                 r"@lmaolover: `.*`", "", message.body, flags=re.IGNORECASE
@@ -486,6 +488,12 @@ Always address who you are speaking to.  Always respond to the last person who h
                         or "cannot fulfill" in response
                         or "can't assist" in response
                         or "cannot assist" in response
+                        or "can't comply" in response
+                        or "cannot comply" in response
+                        or "can't engage" in response
+                        or "cannot engage" in response
+                        or "can't generate" in response
+                        or "cannot generate" in response
                     ):
                         log(
                             room.name,
