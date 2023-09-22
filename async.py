@@ -806,13 +806,6 @@ LmaoLover:""".format(
             except Exception as e:
                 logError(room.name, "link", message.body, e)
 
-        elif re.match("ay+ lmao", message_body_lower):
-            self.room_message(room, random_selection(memes["lmao"]))
-        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
-            self.room_message(room, random_selection(memes["clam"]))
-        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
-            self.room_message(room, random_selection(memes["lmoa"]))
-
         elif command_matches:
             try:
                 cmd_matches = [cmd.lower() for cmd in command_matches[:3]]
@@ -829,6 +822,13 @@ LmaoLover:""".format(
                     self.room_message(room, send_msg)
             except:
                 logError(room.name, "command", message.body, e)
+
+        elif re.match("ay+ lmao", message_body_lower):
+            self.room_message(room, random_selection(memes["lmao"]))
+        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
+            self.room_message(room, random_selection(memes["clam"]))
+        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
+            self.room_message(room, random_selection(memes["lmoa"]))
 
         elif "lmao?" in message_body_lower:
             roger_messages = [
