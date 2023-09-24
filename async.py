@@ -348,11 +348,8 @@ class LmaoBot(chatango.Client):
         user: chatango.User = message.user
         room: chatango.Room = message.room
         log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
-        if (
-            user.name.lower() == "lmaolover"
-            and message.body != "https://lmao.love/stash/memes/jews.gif"
-        ):
-            self.room_message(room, "https://lmao.love/stash/memes/jews.gif")
+        if user.name.lower() == "lmaolover" and message.body != stash_memes["/jews"]:
+            self.room_message(room, stash_memes["/jews"])
 
     async def on_delete_user(self, messages):
         for message in messages:
@@ -818,7 +815,7 @@ LmaoLover:""".format(
                 links = []
                 for cmd in cmd_matches:
                     if room.name in chat["phil"] and ("chop" in cmd or cmd == "/dink"):
-                        links.append("https://i.imgur.com/fnAVXWe.gif")
+                        links.append(stash_memes["/philsdink"])
                     else:
                         links.extend(stash_memes.get(cmd, "").split())
                 send_msg = "\n" + " ".join(links[:3])
@@ -886,9 +883,6 @@ LmaoLover:""".format(
             self.room_message(room, random_selection(memes["trump"]))
         elif "!whatson" in message_body_lower:
             self.room_message(room, "https://guide.lmao.love/")
-        elif "!stash" in message_body_lower:
-            meme = random_selection(stash_tuples)
-            self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
         elif "newstash" in message_body_lower:
             latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
             self.room_message(room, "{}".format(latest_names))
@@ -899,19 +893,15 @@ LmaoLover:""".format(
             imgs = " ".join(meme[1] for meme in meme_roll)
             self.room_message(room, "{}<br/> {}".format(names, imgs), html=True)
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/vyrNpSm.png")
+            self.room_message(room, stash_memes["/jameis"])
         elif "!phins" in message_body_lower:
-            self.room_message(
-                room, "https://giphygifs.s3.amazonaws.com/media/Px2Zu55ofxfO0/giphy.gif"
-            )
+            self.room_message(room, stash_memes["/phins"])
         elif "!spike" in message_body_lower:
-            self.room_message(
-                room, "https://lmaolover.github.io/lmao.site/memes/1smoke.gif"
-            )
+            self.room_message(room, stash_memes["/1smoke"])
         elif "tyson" in message_body_lower:
             self.room_message(room, random_selection(memes["tyson"]))
         elif "pika" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/dZxHsel.png")
+            self.room_message(room, stash_memes["/pikaa"])
         elif "propaganda" in message_body_lower:
             self.room_message(room, random_selection(memes["korea"]))
         elif "xmas" in message_body_lower or "christmas" in message_body_lower:
@@ -921,17 +911,19 @@ LmaoLover:""".format(
         elif "jumanji" in message_body_lower:
             self.room_message(room, random_selection(memes["jumanji"]))
         elif "devil?" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/kz3joDl.jpg")
+            self.room_message(room, stash_memes["/devil?"])
         elif "go2bed" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/hpZ64Zk.jpg")
+            self.room_message(room, stash_memes["/go2bed"])
         elif "gil2bed" in message_body_lower:
-            self.room_message(room, "https://i.imgur.com/8SwlIv8.png")
+            self.room_message(room, stash_memes["/gil2bed"])
         elif (
             "ronaldo" in message_body_lower
             or "rolando" in message_body_lower
             or "penaldo" in message_body_lower
         ):
             self.room_message(room, random_selection(memes["ronaldo"]))
+        elif lil_cnn or cnn_cnn_cnn:
+            self.room_message(room, random_selection(memes["cnn"]), delay=1)
         # elif "!tv" in message_body_lower:
         #     if country_match:
         #         country_code = countries[country_match]
@@ -939,8 +931,6 @@ LmaoLover:""".format(
         #         self.room_message(room, "{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), html=True, delay=1)
         #     else:
         #         self.room_message(room, "https://lmao.love")
-        elif lil_cnn or cnn_cnn_cnn:
-            self.room_message(room, random_selection(memes["cnn"]), delay=1)
 
 
 if __name__ == "__main__":
