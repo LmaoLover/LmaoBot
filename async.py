@@ -4,7 +4,6 @@ import json
 import yaml
 import random
 import requests
-import twitter
 import asyncio
 import chatango
 import logging
@@ -99,10 +98,6 @@ with open(cwd + "/countries.yaml", "r") as countriesyaml:
 with open(cwd + "/rooms.yaml", "r") as roomsyaml:
     chat = yaml.safe_load(roomsyaml)
 
-with open(cwd + "/twitter.yaml", "r") as twitteryaml:
-    keys = yaml.safe_load(twitteryaml)
-    tw_api = twitter.Api(**keys, tweet_mode="extended")
-
 with open(cwd + "/wolfram.yaml", "r") as wolframyaml:
     keys = yaml.safe_load(wolframyaml)
     wolfram_client = Client(keys["app_id"])
@@ -118,8 +113,6 @@ yt_re = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})"
 )
 imdb_re = re.compile(r"(?:.*\.|.*)imdb.com/(?:t|T)itle(?:\?|/)(..\d+)")
-twitter_re = re.compile(r"twitter.com/[a-zA-Z0-9_]+/status/([0-9]+)", re.IGNORECASE)
-insta_re = re.compile(r"instagram.com/p/[a-zA-Z0-9_-]+", re.IGNORECASE)
 
 
 def render_history(history):
@@ -395,8 +388,6 @@ class LmaoBot(chatango.Client):
         command_matches = command_re.findall(message.body)
         yt_matches = yt_re.search(message.body)
         imdb_matches = imdb_re.search(message.body)
-        twitter_matches = twitter_re.search(message.body)
-        insta_matches = insta_re.search(message.body)
         other_links = [
             "worldstar",
             "dailymotion.com",
@@ -736,37 +727,6 @@ LmaoLover:""".format(
             except Exception as e:
                 logError(room.name, "imdb", message.body, e)
 
-        # Twitter removed api access
-        # elif twitter_matches:
-        #     try:
-        #         status_id = twitter_matches.group(1)
-        #         tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
-        #         desc = tweet.full_text
-        #         img = ""
-        #         if tweet.media:
-        #             img = next(media.media_url_https for media in tweet.media)
-        #         if "satan" in desc.lower():
-        #             self.praise_jesus(room)
-        #         else:
-        #             self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
-        #     except Exception as e:
-        #         # just try again for connection error
-        #         try:
-        #             status_id = twitter_matches.group(1)
-        #             tweet = await thread(tw_api.GetStatus, status_id, trim_user=True)
-        #             desc = tweet.full_text
-        #             img = ""
-        #             if tweet.media:
-        #                 img = next(media.media_url for media in tweet.media)
-        #             if "satan" in desc.lower():
-        #                 self.praise_jesus(room)
-        #             else:
-        #                 self.room_message(
-        #                     room, "{}<br/> {}".format(desc, img), html=True
-        #                 )
-        #         except Exception as e:
-        #             logError(room.name, "twitter", message.body, e)
-
         elif propaganda_link_matches and room.name in chat["mod"]:
             try:
                 the_link = link_matches.group(0)
@@ -869,8 +829,6 @@ LmaoLover:""".format(
             ]
             self.room_message(room, random_selection(roger_messages))
 
-        elif insta_matches:
-            self.room_message(room, random_selection(memes["insta"]))
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
             self.room_message(room, random_selection(["tl;dr", "spam"]), delay=1)
         # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
