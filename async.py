@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import openai
+import kekg
 
 
 class LowercaseFormatter(logging.Formatter):
@@ -123,9 +124,10 @@ insta_re = re.compile(r"instagram.com/p/[a-zA-Z0-9_-]+", re.IGNORECASE)
 
 def render_history(history):
     listory = [
-        "{}: {}\n".format(msg.user.name, msg.body[:750])
+        "{}: {}\n".format(msg.user.name, msg.body)
         for msg in list(reversed(history))[:20]
-        if msg.flags != 32768  # Exclude mod chat
+        if chatango.MessageFlags.CHANNEL_MOD not in msg.flags
+        and "WWWWWW" not in msg.body
     ]
 
     tot_len = 0
@@ -374,7 +376,9 @@ class LmaoBot(chatango.Client):
             log(room.name, None, "<{0}> {1}".format(user.name, message.body))
 
         if user.isanon:
-            await room.delete_message(message)
+            # await room.delete_message(message)
+            if message_body_lower.strip() == "= =":
+                self.room_message(room, "{0}".format(random_selection(memes["eye"])))
             return
 
         if user.name.lower() == bot_user_lower:
@@ -820,8 +824,41 @@ LmaoLover:""".format(
                 send_msg = "\n" + " ".join(links[:3])
                 if send_msg.strip():
                     self.room_message(room, send_msg)
-            except:
+            except Exception as e:
                 logError(room.name, "command", message.body, e)
+
+        elif (
+            "!moviespam" in message_body_lower
+            or "!moviesspam" in message_body_lower
+            and room.name in chat["kek"] + chat["dev"]
+        ):
+            try:
+                movie_msg = await thread(kekg.movies, spam=True)
+                movie_msg = movie_msg if movie_msg.strip() else "No movies starting atm"
+                self.room_message(room, movie_msg, html=True)
+            except Exception as e:
+                logError(room.name, "moviespam", message.body, e)
+        elif "!movies" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
+            try:
+                movie_msg = await thread(kekg.movies)
+                movie_msg = movie_msg if movie_msg.strip() else "No movies starting atm"
+                self.room_message(room, movie_msg, html=True)
+            except Exception as e:
+                logError(room.name, "movies", message.body, e)
+        elif "!sports" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
+            try:
+                sport_msg = await thread(kekg.sports)
+                sport_msg = sport_msg if sport_msg.strip() else "No live sports atm"
+                self.room_message(room, "\n" + sport_msg, html=True)
+            except Exception as e:
+                logError(room.name, "sports", message.body, e)
+        elif "!egg" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
+            try:
+                sport_msg = await thread(kekg.egg)
+                sport_msg = sport_msg if sport_msg.strip() else "No college egg atm"
+                self.room_message(room, "\n" + sport_msg, html=True)
+            except Exception as e:
+                logError(room.name, "egg", message.body, e)
 
         elif re.match("ay+ lmao", message_body_lower):
             self.room_message(room, random_selection(memes["lmao"]))
@@ -862,9 +899,11 @@ LmaoLover:""".format(
             latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
             self.room_message(room, "{}".format(latest_names))
         elif "stash" in message_body_lower:
-            meme = random_selection(stash_tuples)
-            self.room_message(room, "{}<br/> {}".format(meme[0], meme[1]), html=True)
-            # self.room_message(room, random_selection(memes['stash']))
+            amount = min((message_body_lower.count("stash"), 3))
+            meme_roll = [random_selection(stash_tuples) for i in range(amount)]
+            names = " ".join(meme[0] for meme in meme_roll)
+            imgs = " ".join(meme[1] for meme in meme_roll)
+            self.room_message(room, "{}<br/> {}".format(names, imgs), html=True)
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
             self.room_message(room, "https://i.imgur.com/vyrNpSm.png")
         elif "!phins" in message_body_lower:
