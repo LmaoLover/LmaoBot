@@ -62,7 +62,7 @@ def sports():
                 and "High School" not in on_now
             ):
                 lines.append(f"<b>{on_now[1:]}</b> - {channel}")
-    return "\n".join(lines)
+    return "\n" + "\n".join(lines)
 
 
 def egg():
@@ -80,7 +80,7 @@ def egg():
             desc = desc.replace("St.", "Saint")
             desc = desc[: desc.find(".")] if "." in desc else desc
             lines.append(f"<b>{on_now[1:]}</b> - {channel}\n{desc}")
-    return "\n".join(lines)
+    return "\n" + "\n".join(lines)
 
 
 def is_show(broadcast):

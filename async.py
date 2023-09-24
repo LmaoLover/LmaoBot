@@ -828,37 +828,31 @@ LmaoLover:""".format(
                 logError(room.name, "command", message.body, e)
 
         elif (
-            "!moviespam" in message_body_lower
-            or "!moviesspam" in message_body_lower
+            any(
+                cmd in message_body_lower
+                for cmd in ["!moviespam", "!moviesspam", "!movies", "!sports", "!egg"]
+            )
             and room.name in chat["kek"] + chat["dev"]
         ):
             try:
-                movie_msg = await thread(kekg.movies, spam=True)
-                movie_msg = movie_msg if movie_msg.strip() else "No movies starting atm"
-                self.room_message(room, movie_msg, html=True)
+                k_msg = ""
+                if (
+                    "!moviespam" in message_body_lower
+                    or "!moviesspam" in message_body_lower
+                ):
+                    k_msg = await thread(kekg.movies, spam=True)
+                elif "!movies" in message_body_lower:
+                    k_msg = await thread(kekg.movies)
+                elif "!sports" in message_body_lower:
+                    k_msg = await thread(kekg.sports)
+                elif "!egg" in message_body_lower:
+                    k_msg = await thread(kekg.egg)
+                k_msg = k_msg if k_msg.strip() else "None on atm"
+                self.room_message(room, k_msg, html=True)
+            except json.JSONDecodeError as e:
+                self.room_message(room, "Guide not available rn")
             except Exception as e:
-                logError(room.name, "moviespam", message.body, e)
-        elif "!movies" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
-            try:
-                movie_msg = await thread(kekg.movies)
-                movie_msg = movie_msg if movie_msg.strip() else "No movies starting atm"
-                self.room_message(room, movie_msg, html=True)
-            except Exception as e:
-                logError(room.name, "movies", message.body, e)
-        elif "!sports" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
-            try:
-                sport_msg = await thread(kekg.sports)
-                sport_msg = sport_msg if sport_msg.strip() else "No live sports atm"
-                self.room_message(room, "\n" + sport_msg, html=True)
-            except Exception as e:
-                logError(room.name, "sports", message.body, e)
-        elif "!egg" in message_body_lower and room.name in chat["kek"] + chat["dev"]:
-            try:
-                sport_msg = await thread(kekg.egg)
-                sport_msg = sport_msg if sport_msg.strip() else "No college egg atm"
-                self.room_message(room, "\n" + sport_msg, html=True)
-            except Exception as e:
-                logError(room.name, "egg", message.body, e)
+                logError(room.name, "kekg", message.body, e)
 
         elif re.match("ay+ lmao", message_body_lower):
             self.room_message(room, random_selection(memes["lmao"]))
