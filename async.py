@@ -108,7 +108,7 @@ with open(cwd + "/stash_memes.json", "r") as stashjson:
 stash_tuples = [(k, v) for k, v in stash_memes.items()]
 
 link_re = re.compile(r"https?://\S+")
-command_re = re.compile(r"\/[^\s]*")
+command_re = re.compile(r"\/[^\s]*|stash")
 yt_re = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})"
 )
@@ -767,23 +767,6 @@ LmaoLover:""".format(
             except Exception as e:
                 logError(room.name, "link", message.body, e)
 
-        elif command_matches:
-            try:
-                cmd_matches = [cmd.lower() for cmd in command_matches[:3]]
-                # remove ticks from quoting
-                cmd_matches = [s[:-1] if s.endswith("`") else s for s in cmd_matches]
-                links = []
-                for cmd in cmd_matches:
-                    if room.name in chat["phil"] and ("chop" in cmd or cmd == "/dink"):
-                        links.append(stash_memes["/philsdink"])
-                    else:
-                        links.extend(stash_memes.get(cmd, "").split())
-                send_msg = "\n" + " ".join(links[:3])
-                if send_msg.strip():
-                    self.room_message(room, send_msg)
-            except Exception as e:
-                logError(room.name, "command", message.body, e)
-
         elif (
             any(
                 cmd in message_body_lower
@@ -810,6 +793,44 @@ LmaoLover:""".format(
                 self.room_message(room, "Guide not available rn")
             except Exception as e:
                 logError(room.name, "kekg", message.body, e)
+
+        elif command_matches:
+            if "!stash" in message_body_lower:
+                self.room_message(room, "https://lmao.love/stash/")
+            elif "newstash" in message_body_lower:
+                latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
+                self.room_message(room, "{}".format(latest_names))
+            else:
+                cmd_matches = [cmd.lower() for cmd in command_matches]
+                # remove ticks from quoting
+                cmd_matches = [s[:-1] if s.endswith("`") else s for s in cmd_matches]
+
+                show_names = False
+                names = []
+                links = []
+                for cmd in cmd_matches:
+                    if room.name in chat["phil"] and ("chop" in cmd or cmd == "/dink"):
+                        names.append(cmd)
+                        links.append(stash_memes["/philsdink"])
+                    elif cmd == "stash":
+                        show_names = True
+                        stash_roll = random_selection(stash_tuples)
+                        names.append(stash_roll[0])
+                        links.append(stash_roll[1])
+                    elif cmd in stash_memes:
+                        multi_link = stash_memes.get(cmd, "").split()
+                        multi_name = [""] * len(multi_link)
+                        multi_name[0] = cmd
+                        names.extend(multi_name)
+                        links.extend(multi_link)
+
+                cmd_msg = "{}\n{}".format(
+                    " ".join(names[:3]) if show_names else "",
+                    " ".join(links[:3]),
+                )
+
+                if cmd_msg.strip():
+                    self.room_message(room, cmd_msg)
 
         elif re.match("ay+ lmao", message_body_lower):
             self.room_message(room, random_selection(memes["lmao"]))
@@ -841,15 +862,6 @@ LmaoLover:""".format(
             self.room_message(room, random_selection(memes["trump"]))
         elif "!whatson" in message_body_lower:
             self.room_message(room, "https://guide.lmao.love/")
-        elif "newstash" in message_body_lower:
-            latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
-            self.room_message(room, "{}".format(latest_names))
-        elif "stash" in message_body_lower:
-            amount = min((message_body_lower.count("stash"), 3))
-            meme_roll = [random_selection(stash_tuples) for i in range(amount)]
-            names = " ".join(meme[0] for meme in meme_roll)
-            imgs = " ".join(meme[1] for meme in meme_roll)
-            self.room_message(room, "{}<br/> {}".format(names, imgs), html=True)
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
             self.room_message(room, stash_memes["/jameis"])
         elif "!phins" in message_body_lower:
