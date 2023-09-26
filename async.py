@@ -145,6 +145,16 @@ async def thread(func, *args, **kwargs):
     return await loop.run_in_executor(None, partial_func)
 
 
+class LmaoRoom(chatango.Room):
+    def __init__(self, handler, name: str):
+        super().__init__(handler, name)
+        self.last_msg_time = 0
+        self.queue = deque()
+        self.tasks = []
+        # Hack a smaller history size
+        self._history = deque(maxlen=50)
+
+
 class LmaoBot(chatango.Client):
     def setTimeout(self, delay, func, *args, **kwargs):
         self.add_task(delayed_sync(delay, func, *args, **kwargs))
@@ -169,17 +179,17 @@ class LmaoBot(chatango.Client):
             self.setTimeout(delay_time, self.room_message, room, msg, **kwargs)
             return
 
-        queue = self.room_states[room.name]["queue"]
+        queue = room.queue
 
         if not queue:
             self.setTimeout(0, self.pop_queue, room)
         queue.append([msg, kwargs])
 
     def pop_queue(self, room):
-        queue = self.room_states[room.name]["queue"]
+        queue = room.queue
 
         if queue:
-            previous_msg_time = self.room_states[room.name]["last_msg_time"]
+            previous_msg_time = room.last_msg_time
             current_msg_time = timegm(gmtime())
             time_since_last_msg = current_msg_time - previous_msg_time
 
@@ -190,7 +200,7 @@ class LmaoBot(chatango.Client):
 
             # Sending it
             msg, kwargs = queue.popleft()
-            self.room_states[room.name]["last_msg_time"] = current_msg_time
+            room.last_msg_time = current_msg_time
             self.add_task(room.send_message(msg, **kwargs))
 
             if queue:
@@ -290,23 +300,16 @@ class LmaoBot(chatango.Client):
 
     async def on_connect(self, room: chatango.Room):
         # log("status", None, "[{0}] Connected".format(room.name))
-        self.room_states[room.name] = {
-            "last_msg_time": 0,
-            "queue": deque(),
-            "tasks": [
-                asyncio.create_task(self.check_four_twenty(room)),
-                asyncio.create_task(self.promote_norks(room)),
-            ],
-        }
-
-        # Hack a smaller history size
-        room._history = deque(maxlen=50)
+        room.tasks = [
+            asyncio.create_task(self.check_four_twenty(room)),
+            asyncio.create_task(self.promote_norks(room)),
+        ]
 
     async def on_disconnect(self, room):
         # log("status", None, "[{0}] Disconnected".format(room.name))
-        for task in self.room_states[room.name]["tasks"]:
+        for task in room.tasks:
             task.cancel()
-        self.room_states.pop(room.name, None)
+        room.tasks = []
 
     async def on_denied(self, room):
         log("status", None, "[{0}] Denied".format(room.name))
@@ -349,11 +352,7 @@ class LmaoBot(chatango.Client):
             room: chatango.Room = message.room
             log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
 
-    # TODO fix the blocking/waiting callback problem
     async def on_message(self, message):
-        self.add_task(self.do_message(message))
-
-    async def do_message(self, message):
         user: chatango.User = message.user
         room: chatango.Room = message.room
         message_body_lower: str = message.body.lower()
@@ -905,7 +904,7 @@ if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    bot = LmaoBot(config["username"], config["password"], rooms)
+    bot = LmaoBot(config["username"], config["password"], rooms, room_class=LmaoRoom)
     # bot = LmaoBot(rooms=rooms)
     task = loop.create_task(bot.run())
 
