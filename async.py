@@ -13,11 +13,11 @@ from pytz import timezone
 from calendar import timegm
 from datetime import datetime, timedelta
 from time import gmtime
-from functools import partial
 from youtube_search import YoutubeSearch
 from urllib.parse import urlparse, urlunparse, parse_qs, quote
 from wolframalpha import Client
 from collections import deque
+from asyncio import to_thread
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -132,82 +132,46 @@ def render_history(history):
     return "".join(reversed(listory))
 
 
-# TODO add helpers to client: delay, sync, io sync in thread
-async def delayed_sync(delay, func, *args, **kwargs):
-    await asyncio.sleep(delay)
-    # Just run the function assuming it doesn't block
-    return func(*args, **kwargs)
-
-
-async def thread(func, *args, **kwargs):
-    loop = asyncio.get_running_loop()
-    partial_func = partial(func, *args, **kwargs)
-    return await loop.run_in_executor(None, partial_func)
-
-
 class LmaoRoom(chatango.Room):
-    def __init__(self, handler, name: str):
-        super().__init__(handler, name)
+    def __init__(self, name: str):
+        super().__init__(name)
         self.last_msg_time = 0
-        self.queue = deque()
-        self.tasks = []
+        self.send_queue = asyncio.Queue()
         # Hack a smaller history size
         self._history = deque(maxlen=50)
+        self._send_task = asyncio.create_task(self._process_send_queue())
 
-
-class LmaoBot(chatango.Client):
-    def setTimeout(self, delay, func, *args, **kwargs):
-        self.add_task(delayed_sync(delay, func, *args, **kwargs))
-
-    async def on_init(self):
-        self.room_states = {}
-
-    async def on_room_init(self, room):
-        await room.user.get_profile()
-        await room.enable_bg()
-
-    def room_message(self, room, msg, **kwargs):
-        msg = msg[:2798]
-
-        # hack for porting to chatango-lib
-        if kwargs.get("html"):
-            kwargs["use_html"] = True
-            kwargs.pop("html")
+    async def send_message(self, message, **kwargs):
+        msg = message[:2798]
 
         delay_time = kwargs.pop("delay", None)
         if delay_time:
-            self.setTimeout(delay_time, self.room_message, room, msg, **kwargs)
+            self.add_delayed_task(delay_time, self.send_message(message, **kwargs))
             return
 
-        queue = room.queue
+        await self.send_queue.put((msg, kwargs))
 
-        if not queue:
-            self.setTimeout(0, self.pop_queue, room)
-        queue.append([msg, kwargs])
-
-    def pop_queue(self, room):
-        queue = room.queue
-
-        if queue:
-            previous_msg_time = room.last_msg_time
+    async def _process_send_queue(self):
+        while True:
+            msg, kwargs = await self.send_queue.get()
+            previous_msg_time = self.last_msg_time
             current_msg_time = timegm(gmtime())
             time_since_last_msg = current_msg_time - previous_msg_time
 
-            if room.rate_limit and time_since_last_msg < room.rate_limit:
-                try_again_in = room.rate_limit + 1 - time_since_last_msg
-                self.setTimeout(try_again_in, self.pop_queue, room)
-                return
+            if self.rate_limit and time_since_last_msg < self.rate_limit:
+                wait_time = self.rate_limit + 1 - time_since_last_msg
+                await asyncio.sleep(wait_time)
 
-            # Sending it
-            msg, kwargs = queue.popleft()
-            room.last_msg_time = current_msg_time
-            self.add_task(room.send_message(msg, **kwargs))
+            self.last_msg_time = timegm(gmtime())
+            await super().send_message(msg, **kwargs)
 
-            if queue:
-                try_again_in = room.rate_limit
-                self.setTimeout(try_again_in, self.pop_queue, room)
 
-    def praise_jesus(self, room):
+class LmaoPM(chatango.PM):
+    pass
+
+
+class LmaoBot(chatango.Client):
+    async def praise_jesus(self, room):
         jesus_message = random_selection(
             [
                 "Thank You Based Jesus",
@@ -226,15 +190,15 @@ class LmaoBot(chatango.Client):
             ]
         )
         jesus_image = random_selection(memes["jesus"])
-        self.room_message(
-            room, "{}<br/> {}".format(jesus_message, jesus_image), html=True
+        await room.send_message(
+            "{}<br/> {}".format(jesus_message, jesus_image), use_html=True
         )
 
     async def preach_the_gospel(self, room):
         try:
             the_link = "http://bibledice.com/scripture.php"
-            fetch = await thread(lassie().fetch, the_link)
-            self.room_message(room, fetch["description"])
+            fetch = await to_thread(lassie().fetch, the_link)
+            await room.send_message(fetch["description"])
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
 
@@ -247,7 +211,7 @@ class LmaoBot(chatango.Client):
             second = minus_twenty.second
 
             if hour in {16, 17, 18, 19} and minute == 0 and room.name in chat["kek"]:
-                self.room_message(room, random_selection(memes["four"]))
+                await room.send_message(random_selection(memes["four"]))
 
             rest_time = ((60 - minute) * 60) - second
             try:
@@ -286,10 +250,9 @@ class LmaoBot(chatango.Client):
                     ]
                 )
                 img = random_selection(memes["korea"])
-                self.room_message(
-                    room,
+                await room.send_message(
                     "{} <br/> {}".format(msg, img),
-                    html=True,
+                    use_html=True,
                 )
 
             rest_time = ((60 - minute) * 60) - second
@@ -300,16 +263,14 @@ class LmaoBot(chatango.Client):
 
     async def on_connect(self, room: chatango.Room):
         # log("status", None, "[{0}] Connected".format(room.name))
-        room.tasks = [
-            asyncio.create_task(self.check_four_twenty(room)),
-            asyncio.create_task(self.promote_norks(room)),
-        ]
+        room.add_task(self.check_four_twenty(room))
+        room.add_task(self.promote_norks(room))
+        # await room.user.get_main_profile()
+        # await room.enable_bg()
 
     async def on_disconnect(self, room):
         # log("status", None, "[{0}] Disconnected".format(room.name))
-        for task in room.tasks:
-            task.cancel()
-        room.tasks = []
+        room.cancel_tasks()
 
     async def on_denied(self, room):
         log("status", None, "[{0}] Denied".format(room.name))
@@ -324,13 +285,13 @@ class LmaoBot(chatango.Client):
             "[{}] {} unbanned {}".format(room.name, user.name, target.name),
         )
 
-    def on_show_flood_warning(self, room):
+    async def on_show_flood_warning(self, room):
         log("flood", None, "[{}] flood warning".format(room.name))
 
-    def on_show_temp_ban(self, room):
+    async def on_show_temp_ban(self, room, time):
         log("flood", None, "[{}] flood ban".format(room.name))
 
-    def on_temp_ban(self, room):
+    async def on_temp_ban(self, room, time):
         log("flood", None, "[{}] flood ban repeat".format(room.name))
 
     # TODO create raw handler
@@ -339,22 +300,19 @@ class LmaoBot(chatango.Client):
     #     #    log(room.name, "raw", raw)
     #     pass
 
-    async def on_delete_message(self, message):
+    async def on_delete_message(self, room, message):
         user: chatango.User = message.user
-        room: chatango.Room = message.room
         log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
         if user.name.lower() == "lmaolover" and message.body != stash_memes["/jews"]:
-            self.room_message(room, stash_memes["/jews"])
+            await room.send_message(stash_memes["/jews"])
 
-    async def on_delete_user(self, messages):
+    async def on_delete_user(self, room, messages):
         for message in messages:
             user: chatango.User = message.user
-            room: chatango.Room = message.room
             log(room.name, "deleted", "<{0}> {1}".format(user.name, message.body))
 
-    async def on_message(self, message):
+    async def on_message(self, room, message):
         user: chatango.User = message.user
-        room: chatango.Room = message.room
         message_body_lower: str = message.body.lower()
         bot_user_lower: str = self.username.lower()
 
@@ -366,7 +324,7 @@ class LmaoBot(chatango.Client):
         if user.isanon:
             # await room.delete_message(message)
             if message_body_lower.strip() == "= =":
-                self.room_message(room, "{0}".format(random_selection(memes["eye"])))
+                await room.send_message("{0}".format(random_selection(memes["eye"])))
             return
 
         if user.name.lower() == bot_user_lower:
@@ -410,6 +368,7 @@ class LmaoBot(chatango.Client):
             "infowars.com",
             "rebelnews.com",
             "skynews.com.au",
+            # "vipleague",
         ]
         propaganda_link_matches = link_matches and any(
             link_type in link_matches.group(0) for link_type in propaganda_links
@@ -450,7 +409,9 @@ Always address who you are speaking to.  Always respond to the last person who h
                 mod_msg = f"{user.name}: {message.body}\n"
 
             if not fallback_mode and untagged_message:
-                lmao_user = "{}{}LmaoLover:".format(render_history(room.history), mod_msg)
+                lmao_user = "{}{}LmaoLover:".format(
+                    render_history(room.history), mod_msg
+                )
                 try:
                     # log(room.name, "aidebug", "{}\n{}".format(lmao_system, lmao_user))
                     messages = []
@@ -467,7 +428,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                         }
                     )
 
-                    completion = await thread(
+                    completion = await to_thread(
                         openai.ChatCompletion.create,
                         model="gpt-3.5-turbo",
                         messages=messages,
@@ -499,11 +460,11 @@ Always address who you are speaking to.  Always respond to the last person who h
                         )
                         fallback_mode = True
                     else:
-                        self.room_message(room, "{0}".format(response))
+                        await room.send_message("{0}".format(response))
                 except openai.error.Timeout as e:
                     fallback_mode = True
                 except Exception as e:
-                    self.room_message(room, "{0}".format(e))
+                    await room.send_message("{0}".format(e))
 
             if fallback_mode:
                 try:
@@ -521,7 +482,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                         user.name,
                         untagged_message,
                     )
-                    completion = await thread(
+                    completion = await to_thread(
                         openai.Completion.create,
                         engine="text-davinci-003",
                         prompt=prompt,
@@ -529,19 +490,19 @@ Always address who you are speaking to.  Always respond to the last person who h
                         max_tokens=640,
                         request_timeout=16,
                     )
-                    self.room_message(room, "{0}".format(completion.choices[0].text))
+                    await room.send_message("{0}".format(completion.choices[0].text))
                 except openai.error.Timeout as e:
-                    self.room_message(
-                        room, "AI was too retarded sorry @{0}.".format(user.name)
+                    await room.send_message(
+                        "AI was too retarded sorry @{0}.".format(user.name)
                     )
                 except Exception as e:
-                    self.room_message(room, "{0}".format(e))
+                    await room.send_message("{0}".format(e))
 
         elif yt_matches:
             try:
                 search = yt_matches.group(1)
                 if len(search) > 0:
-                    videos = await thread(
+                    videos = await to_thread(
                         YoutubeSearch, '"' + search + '"', max_results=5
                     )
                     results = videos.videos
@@ -563,14 +524,12 @@ Always address who you are speaking to.  Always respond to the last person who h
                         v = parse_qs(parsed_url.query).get("v", [""])[0]
                         new_link = urlunparse(parsed_url._replace(query=f"v={v}"))
 
-                        self.room_message(
-                            room,
+                        await room.send_message(
                             "{}<br/> {}<br/> {}".format(yt_img, title, new_link),
-                            html=True,
+                            use_html=True,
                         )
                     else:
-                        self.room_message(
-                            room,
+                        await room.send_message(
                             random_selection(
                                 [
                                     "FORBIDDEN video requested",
@@ -592,13 +551,13 @@ Always address who you are speaking to.  Always respond to the last person who h
             and message_body_lower[2] != "?"
         ):
             try:
-                results = await thread(
+                results = await to_thread(
                     wolfram_client.query, message_body_lower[2:].strip()
                 )
                 if results["@success"]:
                     first_result = next(results.results, None)
                     if first_result:
-                        self.room_message(room, first_result.text)
+                        await room.send_message(first_result.text)
                     else:
                         pod_results = None
                         for pod in results.pods:
@@ -606,10 +565,9 @@ Always address who you are speaking to.  Always respond to the last person who h
                                 pod_results = pod
                                 break
                         if pod_results:
-                            self.room_message(room, pod_results.subpod.plaintext)
+                            await room.send_message(pod_results.subpod.plaintext)
                         else:
-                            self.room_message(
-                                room,
+                            await room.send_message(
                                 random_selection(
                                     [
                                         "AI can not compute",
@@ -621,8 +579,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                                 ),
                             )
                 else:
-                    self.room_message(
-                        room,
+                    await room.send_message(
                         random_selection(
                             [
                                 "AI can not compute",
@@ -644,7 +601,7 @@ Always address who you are speaking to.  Always respond to the last person who h
             try:
                 search = message_body_lower[1:].strip()
                 if len(search) > 0:
-                    videos = await thread(YoutubeSearch, search, max_results=1)
+                    videos = await to_thread(YoutubeSearch, search, max_results=1)
                     results = videos.videos
                     if len(results) > 0:
                         result = results[0]
@@ -660,14 +617,12 @@ Always address who you are speaking to.  Always respond to the last person who h
                         v = parse_qs(parsed_url.query).get("v", [""])[0]
                         new_link = urlunparse(parsed_url._replace(query=f"v={v}"))
 
-                        self.room_message(
-                            room,
+                        await room.send_message(
                             "{}<br/> {}<br/> {}".format(yt_img, title, new_link),
-                            html=True,
+                            use_html=True,
                         )
                     else:
-                        self.room_message(
-                            room,
+                        await room.send_message(
                             random_selection(
                                 [
                                     "dude wtf is this",
@@ -687,14 +642,16 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if imdb_matches:
                     video_id = imdb_matches.group(1)
                 else:
-                    imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&t=" + quote(message_body_lower[6:40])
-                    imdb_resp = await thread(requests.get, imdb_api, timeout=3)
+                    imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&t=" + quote(
+                        message_body_lower[6:40]
+                    )
+                    imdb_resp = await to_thread(requests.get, imdb_api, timeout=3)
                     imdb_resp.raise_for_status()
 
                     imdb_info = imdb_resp.json()
                     video_id = imdb_info["imdbID"]
                 imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&i=" + video_id
-                imdb_resp = await thread(requests.get, imdb_api, timeout=3)
+                imdb_resp = await to_thread(requests.get, imdb_api, timeout=3)
                 imdb_resp.raise_for_status()
 
                 imdb_info = imdb_resp.json()
@@ -703,12 +660,11 @@ Always address who you are speaking to.  Always respond to the last person who h
                 year = imdb_info["Year"]
                 rating = imdb_info["imdbRating"]
                 plot = imdb_info["Plot"]
-                self.room_message(
-                    room,
+                await room.send_message(
                     "{0}<br/><b>{1}</b> ({2}) [{3}/10]<br/><i>{4}</i>".format(
                         poster, title, year, rating, plot
                     ),
-                    html=True,
+                    use_html=True,
                 )
                 log(
                     room.name,
@@ -718,33 +674,34 @@ Always address who you are speaking to.  Always respond to the last person who h
                     ),
                 )
             except KeyError:
-                self.room_message(room, "Never heard of it")
+                await room.send_message("Never heard of it")
             except requests.exceptions.Timeout:
-                self.room_message(room, "imdb ded")
+                await room.send_message("imdb ded")
             except requests.exceptions.HTTPError:
-                self.room_message(room, "imdb ded")
+                await room.send_message("imdb ded")
             except Exception as e:
                 logError(room.name, "imdb", message.body, e)
 
         elif propaganda_link_matches and room.name in chat["mod"]:
             try:
                 the_link = link_matches.group(0)
-                fetch = await thread(lassie().fetch, the_link, favicon=False)
+                fetch = await to_thread(lassie().fetch, the_link, favicon=False)
                 desc = fetch["title"]
                 img = ""
                 if fetch["images"]:
                     urls = (img["src"] for img in fetch["images"])
                     img = next(urls, "")
                 await room.delete_message(message)
-                self.room_message(
-                    room, "{}<br/> {}<br/> {}".format(img, desc, the_link), html=True
+                await room.send_message(
+                    "{}<br/> {}<br/> {}".format(img, desc, the_link),
+                    use_html=True,
                 )
             except Exception as e:
                 logError(room.name, "propaganda", message.body, e)
 
         elif other_image_matches:
             try:
-                fetch = await thread(lassie().fetch, link_matches.group(0))
+                fetch = await to_thread(lassie().fetch, link_matches.group(0))
                 desc = fetch["title"]
                 img = ""
                 if fetch["images"]:
@@ -754,15 +711,15 @@ Always address who you are speaking to.  Always respond to the last person who h
                         if "type" in img and img["type"] == "og:image"
                     )
                     img = next(urls, "")
-                self.room_message(room, "{}<br/> {}".format(desc, img), html=True)
+                await room.send_message("{}<br/> {}".format(desc, img), use_html=True)
             except Exception as e:
                 logError(room.name, "link_image", message.body, e)
 
         elif other_link_matches:
             try:
                 the_link = link_matches.group(0)
-                fetch = await thread(lassie().fetch, the_link)
-                self.room_message(room, fetch["title"])
+                fetch = await to_thread(lassie().fetch, the_link)
+                await room.send_message(fetch["title"])
             except Exception as e:
                 logError(room.name, "link", message.body, e)
 
@@ -779,26 +736,26 @@ Always address who you are speaking to.  Always respond to the last person who h
                     "!moviespam" in message_body_lower
                     or "!moviesspam" in message_body_lower
                 ):
-                    k_msg = await thread(kekg.movies, spam=True)
+                    k_msg = await to_thread(kekg.movies, spam=True)
                 elif "!movies" in message_body_lower:
-                    k_msg = await thread(kekg.movies)
+                    k_msg = await to_thread(kekg.movies)
                 elif "!sports" in message_body_lower:
-                    k_msg = await thread(kekg.sports)
+                    k_msg = await to_thread(kekg.sports)
                 elif "!egg" in message_body_lower:
-                    k_msg = await thread(kekg.egg)
+                    k_msg = await to_thread(kekg.egg)
                 k_msg = k_msg if k_msg.strip() else "None on atm"
-                self.room_message(room, k_msg, html=True)
+                await room.send_message(k_msg, use_html=True)
             except json.JSONDecodeError as e:
-                self.room_message(room, "Guide not available rn")
+                await room.send_message("Guide not available rn")
             except Exception as e:
                 logError(room.name, "kekg", message.body, e)
 
         elif command_matches:
             if "!stash" in message_body_lower:
-                self.room_message(room, "https://lmao.love/stash/")
+                await room.send_message("https://lmao.love/stash/")
             elif "newstash" in message_body_lower:
                 latest_names = " ".join(reversed([st[0] for st in stash_tuples[-69:]]))
-                self.room_message(room, "{}".format(latest_names))
+                await room.send_message("{}".format(latest_names))
             else:
                 cmd_matches = [cmd.lower() for cmd in command_matches]
                 # remove ticks from quoting
@@ -823,20 +780,21 @@ Always address who you are speaking to.  Always respond to the last person who h
                         names.extend(multi_name)
                         links.extend(multi_link)
 
-                cmd_msg = "{}\n{}".format(
+                cmd_msg = "{}{}{}".format(
                     " ".join(names[:3]) if show_names else "",
+                    "\n" if show_names or len(links) > 2 else "",
                     " ".join(links[:3]),
                 )
 
                 if cmd_msg.strip():
-                    self.room_message(room, cmd_msg)
+                    await room.send_message(cmd_msg)
 
         elif re.match("ay+ lmao", message_body_lower):
-            self.room_message(room, random_selection(memes["lmao"]))
+            await room.send_message(random_selection(memes["lmao"]))
         elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
-            self.room_message(room, random_selection(memes["clam"]))
+            await room.send_message(random_selection(memes["clam"]))
         elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
-            self.room_message(room, random_selection(memes["lmoa"]))
+            await room.send_message(random_selection(memes["lmoa"]))
 
         elif "lmao?" in message_body_lower:
             roger_messages = [
@@ -847,59 +805,59 @@ Always address who you are speaking to.  Always respond to the last person who h
                 "What you need?",
                 "Yo waddup",
             ]
-            self.room_message(room, random_selection(roger_messages))
+            await room.send_message(random_selection(roger_messages))
 
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
-            self.room_message(room, random_selection(["tl;dr", "spam"]), delay=1)
+            await room.send_message(random_selection(["tl;dr", "spam"]), delay=1)
         # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
-        #     self.room_message(room, "https://lmao.love/infowars")
+        #     await room.send_message("https://lmao.love/infowars")
         elif "church" in message_body_lower or "satan" in message_body_lower:
-            self.praise_jesus(room)
+            await self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
             await self.preach_the_gospel(room)
         elif "maga" in message_body_lower and "magazine" not in message_body_lower:
-            self.room_message(room, random_selection(memes["trump"]))
+            await room.send_message(random_selection(memes["trump"]))
         elif "!whatson" in message_body_lower:
-            self.room_message(room, "https://guide.lmao.love/")
+            await room.send_message("https://guide.lmao.love/")
         elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
-            self.room_message(room, stash_memes["/jameis"])
+            await room.send_message(stash_memes["/jameis"])
         elif "!phins" in message_body_lower:
-            self.room_message(room, stash_memes["/phins"])
+            await room.send_message(stash_memes["/phins"])
         elif "!spike" in message_body_lower:
-            self.room_message(room, stash_memes["/1smoke"])
+            await room.send_message(stash_memes["/1smoke"])
         elif "tyson" in message_body_lower:
-            self.room_message(room, random_selection(memes["tyson"]))
+            await room.send_message(random_selection(memes["tyson"]))
         elif "pika" in message_body_lower:
-            self.room_message(room, stash_memes["/pikaa"])
+            await room.send_message(stash_memes["/pikaa"])
         elif "propaganda" in message_body_lower:
-            self.room_message(room, random_selection(memes["korea"]))
+            await room.send_message(random_selection(memes["korea"]))
         elif "xmas" in message_body_lower or "christmas" in message_body_lower:
-            self.room_message(room, random_selection(memes["santa"]))
+            await room.send_message(random_selection(memes["santa"]))
         elif "shkreli" in message_body_lower:
-            self.room_message(room, random_selection(memes["shkreli"]))
+            await room.send_message(random_selection(memes["shkreli"]))
         elif "jumanji" in message_body_lower:
-            self.room_message(room, random_selection(memes["jumanji"]))
+            await room.send_message(random_selection(memes["jumanji"]))
         elif "devil?" in message_body_lower:
-            self.room_message(room, stash_memes["/devil?"])
+            await room.send_message(stash_memes["/devil?"])
         elif "go2bed" in message_body_lower:
-            self.room_message(room, stash_memes["/go2bed"])
+            await room.send_message(stash_memes["/go2bed"])
         elif "gil2bed" in message_body_lower:
-            self.room_message(room, stash_memes["/gil2bed"])
+            await room.send_message(stash_memes["/gil2bed"])
         elif (
             "ronaldo" in message_body_lower
             or "rolando" in message_body_lower
             or "penaldo" in message_body_lower
         ):
-            self.room_message(room, random_selection(memes["ronaldo"]))
+            await room.send_message(random_selection(memes["ronaldo"]))
         elif lil_cnn or cnn_cnn_cnn:
-            self.room_message(room, random_selection(memes["cnn"]), delay=1)
+            await room.send_message(random_selection(memes["cnn"]), delay=1)
         # elif "!tv" in message_body_lower:
         #     if country_match:
         #         country_code = countries[country_match]
         #         country_name = country_match.title()
-        #         self.room_message(room, "{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), html=True, delay=1)
+        #         await room.send_message("{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), use_html=True, delay=1)
         #     else:
-        #         self.room_message(room, "https://lmao.love")
+        #         await room.send_message("https://lmao.love")
 
 
 if __name__ == "__main__":
@@ -915,6 +873,15 @@ if __name__ == "__main__":
     asyncio.set_event_loop(loop)
 
     bot = LmaoBot(config["username"], config["password"], rooms, room_class=LmaoRoom)
+    # bot = LmaoBot(config["username"], config["password"], rooms=[], pm=True, room_class=LmaoRoom)
+    # bot = LmaoBot(
+    #     config["username"],
+    #     config["password"],
+    #     rooms,
+    #     pm=True,
+    #     room_class=LmaoRoom,
+    #     pm_class=LmaoPM,
+    # )
     # bot = LmaoBot(rooms=rooms)
     task = loop.create_task(bot.run())
 
