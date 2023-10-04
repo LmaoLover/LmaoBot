@@ -139,7 +139,8 @@ class LmaoRoom(chatango.Room):
         self.send_queue = asyncio.Queue()
         # Hack a smaller history size
         self._history = deque(maxlen=50)
-        self._send_task = asyncio.create_task(self._process_send_queue())
+
+        self.add_task(self._process_send_queue())
 
     async def send_message(self, message, **kwargs):
         msg = message[:2798]
@@ -202,16 +203,20 @@ class LmaoBot(chatango.Client):
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
 
-    async def check_four_twenty(self, room):
-        while room.connected:
+    async def check_four_twenty(self):
+        while True:
             this_moment = datetime.now(timezone("America/New_York"))
             minus_twenty = this_moment - timedelta(minutes=20)
             hour = minus_twenty.hour
             minute = minus_twenty.minute
             second = minus_twenty.second
 
-            if hour in {16, 17, 18, 19} and minute == 0 and room.name in chat["kek"]:
-                await room.send_message(random_selection(memes["four"]))
+            if hour in {16, 17, 18, 19} and minute == 0:
+                for _, room in self.rooms.items():
+                    if room.connected and (
+                        room.name in chat["kek"] or room.name in chat["dev"]
+                    ):
+                        await room.send_message(random_selection(memes["four"]))
 
             rest_time = ((60 - minute) * 60) - second
             try:
@@ -219,41 +224,42 @@ class LmaoBot(chatango.Client):
             except asyncio.exceptions.CancelledError:
                 break
 
-    async def promote_norks(self, room):
-        while room.connected:
+    async def promote_norks(self):
+        while True:
             this_moment = datetime.now(timezone("Asia/Pyongyang"))
             hour = this_moment.hour
             minute = this_moment.minute
             second = this_moment.second
 
             # one hour after it starts
-            if (
-                hour == 16
-                and minute == 0
-                and random_selection([1, 0, 0, 0, 0, 0, 0, 0]) == 1
-            ):
-                msg = random_selection(
-                    [
-                        "Kim Alive and Well",
-                        "Missles armed and ready",
-                        "Forty Foot Giants",
-                        "Shen Yun theatre",
-                        "Production facility",
-                        "How to Produce Food",
-                        "Naval sightings",
-                        "Mexican standoff",
-                        "Festival",
-                        "펀 자브 다바",
-                        "맞아요게이",
-                        "미사일 대피소에 들어가다",
-                        "양 사람들을 깨워",
-                    ]
-                )
-                img = random_selection(memes["korea"])
-                await room.send_message(
-                    "{} <br/> {}".format(msg, img),
-                    use_html=True,
-                )
+            if hour == 16 and minute == 0:
+                for _, room in self.rooms.items():
+                    if (
+                        room.connected
+                        and random_selection([1, 0, 0, 0, 0, 0, 0, 0]) == 1
+                    ):
+                        msg = random_selection(
+                            [
+                                "Kim Alive and Well",
+                                "Missles armed and ready",
+                                "Forty Foot Giants",
+                                "Shen Yun theatre",
+                                "Production facility",
+                                "How to Produce Food",
+                                "Naval sightings",
+                                "Mexican standoff",
+                                "Festival",
+                                "펀 자브 다바",
+                                "맞아요게이",
+                                "미사일 대피소에 들어가다",
+                                "양 사람들을 깨워",
+                            ]
+                        )
+                        img = random_selection(memes["korea"])
+                        await room.send_message(
+                            "{} <br/> {}".format(msg, img),
+                            use_html=True,
+                        )
 
             rest_time = ((60 - minute) * 60) - second
             try:
@@ -261,16 +267,19 @@ class LmaoBot(chatango.Client):
             except asyncio.exceptions.CancelledError:
                 break
 
+    connection_check_timeout = 5
+
+    async def on_started(self):
+        self.add_task(self.check_four_twenty())
+        self.add_task(self.promote_norks())
+
     async def on_connect(self, room: chatango.Room):
         # log("status", None, "[{0}] Connected".format(room.name))
-        room.add_task(self.check_four_twenty(room))
-        room.add_task(self.promote_norks(room))
-        # await room.user.get_main_profile()
-        # await room.enable_bg()
+        pass
 
     async def on_disconnect(self, room):
         # log("status", None, "[{0}] Disconnected".format(room.name))
-        room.cancel_tasks()
+        pass
 
     async def on_denied(self, room):
         log("status", None, "[{0}] Denied".format(room.name))
@@ -873,6 +882,7 @@ if __name__ == "__main__":
     asyncio.set_event_loop(loop)
 
     bot = LmaoBot(config["username"], config["password"], rooms, room_class=LmaoRoom)
+    # bot = LmaoBot(config["username"], config["password"], rooms)
     # bot = LmaoBot(config["username"], config["password"], rooms=[], pm=True, room_class=LmaoRoom)
     # bot = LmaoBot(
     #     config["username"],
