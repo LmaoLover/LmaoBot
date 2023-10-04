@@ -16,7 +16,7 @@ with open(cwd + "/kekg_memes.json", "r") as stashjson:
 
 sports_labels = kekg_config["sports_labels"]
 movies_labels = kekg_config["movies_labels"]
-label_mapping = kekg_config["label_mapping"]
+number_mapping = kekg_config["number_mapping"]
 
 
 KEKG_URL = os.environ.get("KEKG_URL")
@@ -45,7 +45,14 @@ def filter_channels(labels=[], programs=[]):
 
 def channel_names():
     channels = filter_channels()
-    return [ch["label"] for ch in channels if "label" in ch]
+    lines = [
+        '"{}": "{}",'.format(
+            ch.get("channelnumber"),
+            ch.get("channel"),
+        )
+        for ch in channels
+    ]
+    return "\n".join(lines)
 
 
 def sports():
@@ -54,7 +61,7 @@ def sports():
     for ch in channels:
         now = ch.get("broadcastnow")
         if now:
-            channel = label_mapping.get(ch.get("label"), ch.get("label"))
+            channel = number_mapping.get(str(ch.get("channelnumber")), ch.get("label"))
             on_now = now.get("title")
             if (
                 on_now.startswith("*")
@@ -71,7 +78,7 @@ def egg():
     for ch in channels:
         now = ch.get("broadcastnow")
         if now:
-            channel = label_mapping.get(ch.get("label"), ch.get("label"))
+            channel = number_mapping.get(str(ch.get("channelnumber")), ch.get("label"))
             on_now = now.get("title", " ")
             desc = now.get("plot")
             if desc.startswith("All the action"):
@@ -122,7 +129,9 @@ def starting_now(channels, test=always_true, spam=False):
                 started.append(
                     "<b>{}</b> - {} - {}% done{}".format(
                         now.get("title"),
-                        label_mapping.get(channel.get("label"), channel.get("label")),
+                        number_mapping.get(
+                            str(channel.get("channelnumber")), channel.get("label")
+                        ),
                         math.floor(now_prog),
                         f"\n{now.get('plot','')[:275]}\n" if spam else "",
                     )
@@ -131,7 +140,9 @@ def starting_now(channels, test=always_true, spam=False):
                 coming_up.append(
                     "<b>{}</b> - {} - In {} minutes{}".format(
                         next.get("title"),
-                        label_mapping.get(channel.get("label"), channel.get("label")),
+                        number_mapping.get(
+                            str(channel.get("channelnumber")), channel.get("label")
+                        ),
                         now_remaining,
                         f"\n{next.get('plot','')[:275]}\n" if spam else "",
                     )
