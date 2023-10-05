@@ -9,6 +9,7 @@ import chatango
 import logging
 import logging.config
 from lassie import Lassie
+from bs4 import BeautifulSoup
 from pytz import timezone
 from calendar import timegm
 from datetime import datetime, timedelta
@@ -354,18 +355,12 @@ class LmaoBot(chatango.Client):
         yt_matches = yt_re.search(message.body)
         imdb_matches = imdb_re.search(message.body)
         other_links = [
-            "worldstar",
             "dailymotion.com",
-            "liveleak.com",
             "strawpoll.me",
             "open.spotify.com",
         ]
-        other_image = ["worldstar"]
         other_link_matches = link_matches and any(
             link_type in link_matches.group(0) for link_type in other_links
-        )
-        other_image_matches = other_link_matches and any(
-            link_type in link_matches.group(0) for link_type in other_image
         )
         propaganda_links = [
             "theepochtimes.com",
@@ -377,7 +372,7 @@ class LmaoBot(chatango.Client):
             "infowars.com",
             "rebelnews.com",
             "skynews.com.au",
-            # "vipleague",
+            "worldstar.com",
         ]
         propaganda_link_matches = link_matches and any(
             link_type in link_matches.group(0) for link_type in propaganda_links
@@ -694,41 +689,30 @@ Always address who you are speaking to.  Always respond to the last person who h
         elif propaganda_link_matches and room.name in chat["mod"]:
             try:
                 the_link = link_matches.group(0)
-                fetch = await to_thread(lassie().fetch, the_link, favicon=False)
-                desc = fetch["title"]
-                img = ""
-                if fetch["images"]:
-                    urls = (img["src"] for img in fetch["images"])
-                    img = next(urls, "")
-                await room.delete_message(message)
-                await room.send_message(
-                    "{}<br/> {}<br/> {}".format(img, desc, the_link),
-                    use_html=True,
-                )
+                page = await to_thread(requests.get, the_link)
+                soup = BeautifulSoup(page.content, "html.parser")
+                title_tag = soup.find("title")
+                img_tag = soup.find("meta", attrs={"property": "og:image"})
+                if title_tag:
+                    await room.send_message(
+                        "{}<br/> {}<br/> {}".format(
+                            img_tag.get("content") if img_tag else "",
+                            title_tag.get_text(),
+                            the_link,
+                        ),
+                        use_html=True,
+                    )
             except Exception as e:
                 logError(room.name, "propaganda", message.body, e)
-
-        elif other_image_matches:
-            try:
-                fetch = await to_thread(lassie().fetch, link_matches.group(0))
-                desc = fetch["title"]
-                img = ""
-                if fetch["images"]:
-                    urls = (
-                        img["src"]
-                        for img in fetch["images"]
-                        if "type" in img and img["type"] == "og:image"
-                    )
-                    img = next(urls, "")
-                await room.send_message("{}<br/> {}".format(desc, img), use_html=True)
-            except Exception as e:
-                logError(room.name, "link_image", message.body, e)
 
         elif other_link_matches:
             try:
                 the_link = link_matches.group(0)
-                fetch = await to_thread(lassie().fetch, the_link)
-                await room.send_message(fetch["title"])
+                page = await to_thread(requests.get, the_link)
+                soup = BeautifulSoup(page.content, "html.parser")
+                title_tag = soup.find("title")
+                if title_tag:
+                    await room.send_message(title_tag.get_text())
             except Exception as e:
                 logError(room.name, "link", message.body, e)
 
