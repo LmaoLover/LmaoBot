@@ -134,6 +134,21 @@ def render_history(history):
     return "".join(reversed(listory))
 
 
+kekg_actions = {
+    "!moviespam": to_thread(kekg.movies, spam=True),
+    "!moviesspam": to_thread(kekg.movies, spam=True),
+    "!imdbspam": to_thread(kekg.movies, spam=True, imdb=True),
+    "!movies": to_thread(kekg.movies),
+    "!sports": to_thread(kekg.sports),
+    "!egg": to_thread(kekg.egg),
+    "!showspam": to_thread(kekg.shows, spam=True),
+    "!showsspam": to_thread(kekg.shows, spam=True),
+    "!shows": to_thread(kekg.shows),
+    "!moviesalt": to_thread(kekg.movies_alt),
+    "!sportsalt": to_thread(kekg.sports_alt),
+}
+
+
 class LmaoRoom(chatango.Room):
     def __init__(self, name: str):
         super().__init__(name)
@@ -141,6 +156,8 @@ class LmaoRoom(chatango.Room):
         self.send_queue = asyncio.Queue()
         # Hack a smaller history size
         self._history = deque(maxlen=50)
+        # Try to push message limit
+        self._maxlen = 2996
 
         self.add_task(self._process_send_queue())
 
@@ -275,14 +292,6 @@ class LmaoBot(chatango.Client):
         self.add_task(self.check_four_twenty())
         self.add_task(self.promote_norks())
 
-    async def on_connect(self, room: chatango.Room):
-        # log("status", None, "[{0}] Connected".format(room.name))
-        pass
-
-    async def on_disconnect(self, room):
-        # log("status", None, "[{0}] Disconnected".format(room.name))
-        pass
-
     async def on_denied(self, room):
         log("status", None, "[{0}] Denied".format(room.name))
 
@@ -304,12 +313,6 @@ class LmaoBot(chatango.Client):
 
     async def on_temp_ban(self, room, time):
         log("flood", None, "[{}] flood ban repeat".format(room.name))
-
-    # TODO create raw handler
-    # def onRaw(self, room, raw):
-    #     # if raw and room.name == "debugroom":
-    #     #    log(room.name, "raw", raw)
-    #     pass
 
     async def on_delete_message(self, room, message):
         user: chatango.User = message.user
@@ -705,44 +708,11 @@ Always address who you are speaking to.  Always respond to the last person who h
                 logError(room.name, "link", message.body, e)
 
         elif (
-            any(
-                cmd in message_body_lower
-                for cmd in [
-                    "!moviespam",
-                    "!moviesspam",
-                    "!imdbspam",
-                    "!movies",
-                    "!sports",
-                    "!egg",
-                    "!showsspam",
-                    "!showspam",
-                    "!shows",
-                ]
-            )
-            and room.name in chat["kek"] + chat["dev"]
-        ):
+            matches := [cmd for cmd in kekg_actions.keys() if cmd in message_body_lower]
+        ) and room.name in chat["kek"] + chat["dev"]:
+            match = max(matches, key=len)
             try:
-                k_msg = ""
-                if (
-                    "!moviespam" in message_body_lower
-                    or "!moviesspam" in message_body_lower
-                ):
-                    k_msg = await to_thread(kekg.movies, spam=True)
-                elif "!movies" in message_body_lower:
-                    k_msg = await to_thread(kekg.movies)
-                elif "!imdbspam" in message_body_lower:
-                    k_msg = await to_thread(kekg.movies, spam=True, imdb=True)
-                elif (
-                    "!showsspam" in message_body_lower
-                    or "!showspam" in message_body_lower
-                ):
-                    k_msg = await to_thread(kekg.shows, spam=True)
-                elif "!shows" in message_body_lower:
-                    k_msg = await to_thread(kekg.shows)
-                elif "!sports" in message_body_lower:
-                    k_msg = await to_thread(kekg.sports)
-                elif "!egg" in message_body_lower:
-                    k_msg = await to_thread(kekg.egg)
+                k_msg = await kekg_actions[match]
                 k_msg = k_msg if k_msg.strip() else "None on atm"
                 await room.send_message(k_msg, use_html=True)
             except json.JSONDecodeError as e:

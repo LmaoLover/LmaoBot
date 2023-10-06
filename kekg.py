@@ -139,6 +139,21 @@ def good_movie(broadcast) -> bool:
     return is_not_show(broadcast) and not runs_over_jeop(broadcast)
 
 
+def is_genre(broadcast, genre) -> bool:
+    try:
+        return broadcast.get("genre", False) and genre in broadcast.get("genre")
+    except TypeError:
+        return False
+
+
+def bad_movie(broadcast) -> bool:
+    return is_genre(broadcast, "Movie") and not runs_over_jeop(broadcast)
+
+
+def sports_genre(broadcast) -> bool:
+    return is_genre(broadcast, "Sports")
+
+
 def always_true(_) -> bool:
     return True
 
@@ -162,6 +177,22 @@ def movies(spam=False, imdb=False):
         printer = program_printout
     return "\n{}".format(
         "\n".join(printer(ch, br, spam) for ch, br in starttime_sorted(movies)),
+    )
+
+
+def movies_alt():
+    started, coming_up = starting_now(filter_channels(), bad_movie)
+    movies = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, plot=False) for ch, br in movies),
+    )
+
+
+def sports_alt():
+    started, coming_up = starting_now(filter_channels(), sports_genre, default_now=True)
+    shows = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, plot=False) for ch, br in shows),
     )
 
 
