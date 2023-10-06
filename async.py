@@ -15,7 +15,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from time import gmtime
 from youtube_search import YoutubeSearch
-from urllib.parse import urlparse, urlunparse, parse_qs, quote
+from urllib.parse import urlparse, urlunparse, parse_qs
 from wolframalpha import Client
 from collections import deque
 from asyncio import to_thread
@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import openai
 import kekg
+from imdb import imdb_info_by_id, imdb_info_by_search, imdb_printout
 
 
 class LowercaseFormatter(logging.Formatter):
@@ -144,7 +145,7 @@ class LmaoRoom(chatango.Room):
         self.add_task(self._process_send_queue())
 
     async def send_message(self, message, **kwargs):
-        msg = message[:self._maxlen]
+        msg = message[: self._maxlen]
 
         delay_time = kwargs.pop("delay", None)
         if delay_time:
@@ -645,30 +646,17 @@ Always address who you are speaking to.  Always respond to the last person who h
             try:
                 if imdb_matches:
                     video_id = imdb_matches.group(1)
+                    imdb_info = await to_thread(imdb_info_by_id, video_id)
                 else:
-                    imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&t=" + quote(
-                        message_body_lower[6:40]
+                    imdb_info = await to_thread(
+                        imdb_info_by_search, message_body_lower[6:40]
                     )
-                    imdb_resp = await to_thread(requests.get, imdb_api, timeout=3)
-                    imdb_resp.raise_for_status()
-
-                    imdb_info = imdb_resp.json()
                     video_id = imdb_info["imdbID"]
-                imdb_api = "http://www.omdbapi.com/?apikey=cc41196e&i=" + video_id
-                imdb_resp = await to_thread(requests.get, imdb_api, timeout=3)
-                imdb_resp.raise_for_status()
-
-                imdb_info = imdb_resp.json()
-                poster = imdb_info["Poster"]
                 title = imdb_info["Title"]
                 year = imdb_info["Year"]
                 rating = imdb_info["imdbRating"]
-                plot = imdb_info["Plot"]
                 await room.send_message(
-                    "{0}<br/><b>{1}</b> ({2}) [{3}/10]<br/><i>{4}</i>".format(
-                        poster, title, year, rating, plot
-                    ),
-                    use_html=True,
+                    imdb_printout(imdb_info, show_poster=True), use_html=True
                 )
                 log(
                     room.name,
