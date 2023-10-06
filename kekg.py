@@ -2,6 +2,8 @@ import os
 import json
 import math
 from lassie import Lassie
+from datetime import datetime, timedelta
+import pytz
 
 
 def lassie():
@@ -100,6 +102,39 @@ def is_not_show(broadcast):
     ).startswith("*")
 
 
+def runs_over_jeop(broadcast):
+    start = broadcast.get("starttime")
+    end = broadcast.get("endtime")
+    if not start or not end:
+        return False
+
+    eastern_timezone = pytz.timezone("US/Eastern")
+    startdate = (
+        datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+        .replace(tzinfo=pytz.UTC)
+        .astimezone(eastern_timezone)
+    )
+    enddate = (
+        datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+        .replace(tzinfo=pytz.UTC)
+        .astimezone(eastern_timezone)
+    )
+
+    jeop_start = startdate.replace(hour=19, minute=5, second=0, microsecond=0)
+
+    if startdate.time() > jeop_start.time():
+        jeop_start += timedelta(days=1)
+
+    if jeop_start.weekday() > 4:
+        return False
+
+    return startdate.time() < jeop_start.time() and enddate.time() > jeop_start.time()
+
+
+def good_movie(broadcast):
+    return is_not_show(broadcast) and not runs_over_jeop(broadcast)
+
+
 def always_true(_):
     return True
 
@@ -109,7 +144,7 @@ def shows(spam=False):
 
 
 def movies(spam=False):
-    return starting_now(filter_channels(labels=movies_labels), is_not_show, spam)
+    return starting_now(filter_channels(labels=movies_labels), good_movie, spam)
 
 
 def starting_now(channels, test=always_true, spam=False):
