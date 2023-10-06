@@ -12,12 +12,6 @@ Look at `requirements.txt` to get see what libraries you need.  The current bot 
 
 This library uses `asyncio` and has many advantages over the old version, but requires working in async style.
 
-### About ch.py
-
-The old version is `bot.py` which uses an updated version of ch.py: [TheClonerx/ch.py](https://github.com/TheClonerx/ch.py)
-
-This library has issues with reconnecting when kicked from the chatango servers, and cannot handle messages in parallel.
-
 ### Python exceptions
 
 Every error in python will crash your bot and you can't always tell what errors will happen.  Use try/except blocks to log errors instead of crashing.

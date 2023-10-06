@@ -4,6 +4,8 @@ services:
     image: lmaobot
     restart: unless-stopped
     volumes:
-      - /home/me/LmaoBotFolder:/root/lmaobot
+      - /home/user/LmaoBot:/root/lmaobot
     environment:
+      - BOT_PROD=1
       - OPENAI_API_KEY=...
+      - KEKG_URL=...
