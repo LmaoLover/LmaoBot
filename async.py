@@ -130,7 +130,8 @@ def render_history(history):
 
     return "".join(reversed(listory))
 
-simple_meme_actions: dict[str, str] = {
+
+simple_memes: dict[str, str] = {
     "!whatson": "https://guide.lmao.love/",
     "!jameis": stash_memes["/jameis"],
     "!winston": stash_memes["/jameis"],
@@ -145,17 +146,17 @@ simple_meme_actions: dict[str, str] = {
 random_meme_actions = {}
 
 kekg_actions = {
-    "!moviespam": to_thread(kekg.movies, spam=True),
-    "!moviesspam": to_thread(kekg.movies, spam=True),
-    "!imdbspam": to_thread(kekg.movies, spam=True, imdb=True),
-    "!movies": to_thread(kekg.movies),
-    "!sports": to_thread(kekg.sports),
-    "!egg": to_thread(kekg.egg),
-    "!showspam": to_thread(kekg.shows, spam=True),
-    "!showsspam": to_thread(kekg.shows, spam=True),
-    "!shows": to_thread(kekg.shows),
-    "!moviesalt": to_thread(kekg.movies_alt),
-    "!sportsalt": to_thread(kekg.sports_alt),
+    "!moviespam": (kekg.movies, {"spam": True}),
+    "!moviesspam": (kekg.movies, {"spam": True}),
+    "!imdbspam": (kekg.movies, {"spam": True, "imdb": True}),
+    "!movies": (kekg.movies, {}),
+    "!sports": (kekg.sports, {}),
+    "!egg": (kekg.egg, {}),
+    "!showspam": (kekg.shows, {"spam": True}),
+    "!showsspam": (kekg.shows, {"spam": True}),
+    "!shows": (kekg.shows, {}),
+    "!moviesalt": (kekg.movies_alt, {}),
+    "!sportsalt": (kekg.sports_alt, {}),
 }
 
 
@@ -711,7 +712,9 @@ Always address who you are speaking to.  Always respond to the last person who h
         ) and room.name in chat["kek"] + chat["dev"]:
             match = max(matches, key=len)
             try:
-                k_msg = await kekg_actions[match]
+                params = kekg_actions[match]
+                coroutine_func, kwargs = params
+                k_msg = await to_thread(coroutine_func, **kwargs)
                 k_msg = k_msg if k_msg.strip() else "None on atm"
                 await room.send_message(k_msg, use_html=True)
             except json.JSONDecodeError as e:
@@ -769,11 +772,11 @@ Always address who you are speaking to.  Always respond to the last person who h
             ]
             await room.send_message(random_selection(roger_messages))
 
-        elif (
-            matches := [cmd for cmd in simple_meme_actions.keys() if cmd in message_body_lower]
-        ):
+        elif matches := [
+            cmd for cmd in simple_memes.keys() if cmd in message_body_lower
+        ]:
             matches = matches[:3]
-            links = [meme for match in matches if (meme := simple_meme_actions.get(match))]
+            links = [meme for match in matches if (meme := simple_memes.get(match))]
             await room.send_message(" ".join(links))
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
             await room.send_message(random_selection(["tl;dr", "spam"]), delay=1)
