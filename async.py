@@ -707,7 +707,17 @@ Always address who you are speaking to.  Always respond to the last person who h
         elif (
             any(
                 cmd in message_body_lower
-                for cmd in ["!moviespam", "!moviesspam", "!movies", "!sports", "!egg"]
+                for cmd in [
+                    "!moviespam",
+                    "!moviesspam",
+                    "!imdbspam",
+                    "!movies",
+                    "!sports",
+                    "!egg",
+                    "!showsspam",
+                    "!showspam",
+                    "!shows",
+                ]
             )
             and room.name in chat["kek"] + chat["dev"]
         ):
@@ -720,6 +730,15 @@ Always address who you are speaking to.  Always respond to the last person who h
                     k_msg = await to_thread(kekg.movies, spam=True)
                 elif "!movies" in message_body_lower:
                     k_msg = await to_thread(kekg.movies)
+                elif "!imdbspam" in message_body_lower:
+                    k_msg = await to_thread(kekg.movies, spam=True, imdb=True)
+                elif (
+                    "!showsspam" in message_body_lower
+                    or "!showspam" in message_body_lower
+                ):
+                    k_msg = await to_thread(kekg.shows, spam=True)
+                elif "!shows" in message_body_lower:
+                    k_msg = await to_thread(kekg.shows)
                 elif "!sports" in message_body_lower:
                     k_msg = await to_thread(kekg.sports)
                 elif "!egg" in message_body_lower:

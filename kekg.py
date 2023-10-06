@@ -4,6 +4,7 @@ import math
 from lassie import Lassie
 from datetime import datetime, timedelta
 import pytz
+from imdb import imdb_info_by_search, imdb_printout
 
 
 def lassie():
@@ -18,6 +19,7 @@ with open(cwd + "/kekg_memes.json", "r") as stashjson:
 
 sports_labels = kekg_config["sports_labels"]
 movies_labels = kekg_config["movies_labels"]
+shows_labels = kekg_config["shows_labels"]
 number_mapping = kekg_config["number_mapping"]
 
 
@@ -57,21 +59,23 @@ def channel_names():
     return "\n".join(lines)
 
 
-def sports():
-    channels = filter_channels(labels=sports_labels)
-    lines = []
-    for ch in channels:
-        now = ch.get("broadcastnow")
-        if now:
-            channel = number_mapping.get(str(ch.get("channelnumber")), ch.get("label"))
-            on_now = now.get("title")
-            if (
-                on_now.startswith("*")
-                and "College" not in on_now
-                and "High School" not in on_now
-            ):
-                lines.append(f"<b>{on_now[1:]}</b> - {channel}")
-    return "\n" + "\n".join(lines)
+def good_sports(broadcast) -> bool:
+    on_now = broadcast.get("title")
+    return (
+        on_now.startswith("*")
+        and "College" not in on_now
+        and "High School" not in on_now
+    )
+
+
+def sports(spam=False):
+    started, coming_up = starting_now(
+        filter_channels(labels=sports_labels), good_sports, default_now=True
+    )
+    shows = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, spam) for ch, br in shows),
+    )
 
 
 def egg():
@@ -92,17 +96,17 @@ def egg():
     return "\n" + "\n".join(lines)
 
 
-def is_show(broadcast):
+def is_show(broadcast) -> bool:
     return broadcast.get("runtime", 0) <= 60
 
 
-def is_not_show(broadcast):
+def is_not_show(broadcast) -> bool:
     return broadcast.get("runtime", 0) > 60 and not broadcast.get(
         "title", ""
     ).startswith("*")
 
 
-def runs_over_jeop(broadcast):
+def runs_over_jeop(broadcast) -> bool:
     start = broadcast.get("starttime")
     end = broadcast.get("endtime")
     if not start or not end:
@@ -131,23 +135,82 @@ def runs_over_jeop(broadcast):
     return startdate.time() < jeop_start.time() and enddate.time() > jeop_start.time()
 
 
-def good_movie(broadcast):
+def good_movie(broadcast) -> bool:
     return is_not_show(broadcast) and not runs_over_jeop(broadcast)
 
 
-def always_true(_):
+def always_true(_) -> bool:
     return True
 
 
 def shows(spam=False):
-    return starting_now(filter_channels(), is_show, spam)
+    started, coming_up = starting_now(
+        filter_channels(labels=shows_labels), is_show, default_now=True
+    )
+    shows = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, spam) for ch, br in shows),
+    )
 
 
-def movies(spam=False):
-    return starting_now(filter_channels(labels=movies_labels), good_movie, spam)
+def movies(spam=False, imdb=False):
+    started, coming_up = starting_now(filter_channels(labels=movies_labels), good_movie)
+    movies = started + coming_up
+    if imdb:
+        printer = imdb_extra_printout
+    else:
+        printer = program_printout
+    return "\n{}".format(
+        "\n".join(printer(ch, br, spam) for ch, br in starttime_sorted(movies)),
+    )
 
 
-def starting_now(channels, test=always_true, spam=False):
+def starttime_sorted(channel_broadcasts):
+    return sorted(channel_broadcasts, key=lambda b: b[1].get("starttime", ""))
+
+
+def program_printout(channel, broadcast, plot=False):
+    return "<b>{}</b> - {} - {}{}".format(
+        broadcast.get("title"),
+        number_mapping.get(str(channel.get("channelnumber")), channel.get("label")),
+        program_timing(broadcast),
+        f"\n{broadcast.get('plot','')[:275]}\n" if plot else "",
+    )
+
+
+def imdb_extra_printout(channel, broadcast, plot=True):
+    try:
+        imdb_info = imdb_info_by_search(broadcast.get("title"))
+        channel_time = " - {} - {}".format(
+            number_mapping.get(str(channel.get("channelnumber")), channel.get("label")),
+            program_timing(broadcast),
+        )
+        return imdb_printout(imdb_info, show_poster=False, extra_info=channel_time)
+    except KeyError:
+        return ""
+
+
+def program_timing(broadcast):
+    try:
+        current_time = datetime.now(pytz.UTC)
+        starttime = datetime.strptime(
+            broadcast.get("starttime", ""), "%Y-%m-%d %H:%M:%S"
+        ).replace(tzinfo=pytz.UTC)
+
+        if starttime > current_time:
+            time_until = starttime - current_time
+            now_remaining = str(round(time_until.total_seconds() / 60))
+            return "In {} minutes".format(now_remaining)
+        else:
+            now_prog = broadcast.get("progresspercentage", 50)
+            return "{}% done".format(math.floor(now_prog))
+
+    except ValueError:
+        return ""
+
+
+# Returns two lists of (channel, broadcast)
+def starting_now(channels, test=always_true, default_now=False):
     started = []
     coming_up = []
     for channel in channels:
@@ -161,29 +224,10 @@ def starting_now(channels, test=always_true, spam=False):
                 ((now.get("runtime", 420) * 60) - now.get("progress", 210 * 60)) / 60
             )
             if now_starting and test(now):
-                started.append(
-                    "<b>{}</b> - {} - {}% done{}".format(
-                        now.get("title"),
-                        number_mapping.get(
-                            str(channel.get("channelnumber")), channel.get("label")
-                        ),
-                        math.floor(now_prog),
-                        f"\n{now.get('plot','')[:275]}\n" if spam else "",
-                    )
-                )
+                started.append((channel, now))
             elif next and now_remaining <= 15 and test(next):
-                coming_up.append(
-                    "<b>{}</b> - {} - In {} minutes{}".format(
-                        next.get("title"),
-                        number_mapping.get(
-                            str(channel.get("channelnumber")), channel.get("label")
-                        ),
-                        now_remaining,
-                        f"\n{next.get('plot','')[:275]}\n" if spam else "",
-                    )
-                )
+                coming_up.append((channel, next))
+            elif default_now and test(now):
+                started.append((channel, now))
 
-    return "\n{}\n{}".format(
-        "\n".join(started),
-        "\n".join(coming_up),
-    )
+    return started, coming_up
