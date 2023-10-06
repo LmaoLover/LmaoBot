@@ -94,9 +94,6 @@ for filename in os.listdir(cwd):
         meme_type = filename[:-10]
         memes[meme_type] = [line.rstrip("\n") for line in open(cwd + "/" + filename)]
 
-with open(cwd + "/countries.yaml", "r") as countriesyaml:
-    countries = yaml.safe_load(countriesyaml)
-
 with open(cwd + "/rooms.yaml", "r") as roomsyaml:
     chat = yaml.safe_load(roomsyaml)
 
@@ -133,6 +130,19 @@ def render_history(history):
 
     return "".join(reversed(listory))
 
+simple_meme_actions: dict[str, str] = {
+    "!whatson": "https://guide.lmao.love/",
+    "!jameis": stash_memes["/jameis"],
+    "!winston": stash_memes["/jameis"],
+    "!phins": stash_memes["/phins"],
+    "!spike": stash_memes["/1smoke"],
+    "pika": stash_memes["/pikaa"],
+    "devil?": stash_memes["/devil?"],
+    "go2bed": stash_memes["/go2bed"],
+    "gil2bed": stash_memes["/gil2bed"],
+}
+
+random_meme_actions = {}
 
 kekg_actions = {
     "!moviespam": to_thread(kekg.movies, spam=True),
@@ -336,7 +346,6 @@ class LmaoBot(chatango.Client):
             log(room.name, None, "<{0}> {1}".format(user.name, message.body))
 
         if user.isanon:
-            # await room.delete_message(message)
             if message_body_lower.strip() == "= =":
                 await room.send_message("{0}".format(random_selection(memes["eye"])))
             return
@@ -351,40 +360,7 @@ class LmaoBot(chatango.Client):
                 "[{0}] <{1}> {2}".format(room.name, user.name, message.body),
             )
 
-        lil_cnn = "lil" in message_body_lower and "cnn" in message_body_lower
-        cnn_cnn_cnn = message_body_lower.split().count("cnn") >= 3
-
         link_matches = link_re.search(message.body)
-        command_matches = command_re.findall(message.body)
-        yt_matches = yt_re.search(message.body)
-        imdb_matches = imdb_re.search(message.body)
-        other_links = [
-            "dailymotion.com",
-            "strawpoll.me",
-            "open.spotify.com",
-        ]
-        other_link_matches = link_matches and any(
-            link_type in link_matches.group(0) for link_type in other_links
-        )
-        propaganda_links = [
-            "theepochtimes.com",
-            "ntd.com",
-            "revolver.news",
-            "ntdtv.com",
-            "ntdca.com",
-            "75.126.16.248",
-            "infowars.com",
-            "rebelnews.com",
-            "skynews.com.au",
-            "worldstar.com",
-        ]
-        propaganda_link_matches = link_matches and any(
-            link_type in link_matches.group(0) for link_type in propaganda_links
-        )
-
-        country_match = next(
-            (country for country in countries if country in message_body_lower), None
-        )
 
         if (
             f"@{bot_user_lower}" in message_body_lower
@@ -506,7 +482,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                 except Exception as e:
                     await room.send_message("{0}".format(e))
 
-        elif yt_matches:
+        elif yt_matches := yt_re.search(message.body):
             try:
                 search = yt_matches.group(1)
                 if len(search) > 0:
@@ -645,7 +621,9 @@ Always address who you are speaking to.  Always respond to the last person who h
             except Exception as e:
                 logError(room.name, "youtube-search", message.body, e)
 
-        elif imdb_matches or message_body_lower.startswith("!imdb "):
+        elif (
+            imdb_matches := imdb_re.search(message.body)
+        ) or message_body_lower.startswith("!imdb "):
             try:
                 if imdb_matches:
                     video_id = imdb_matches.group(1)
@@ -677,7 +655,21 @@ Always address who you are speaking to.  Always respond to the last person who h
             except Exception as e:
                 logError(room.name, "imdb", message.body, e)
 
-        elif propaganda_link_matches and room.name in chat["mod"]:
+        elif link_matches and any(
+            link_type in link_matches.group(0)
+            for link_type in [
+                "theepochtimes.com",
+                "ntd.com",
+                "revolver.news",
+                "ntdtv.com",
+                "ntdca.com",
+                "75.126.16.248",
+                "infowars.com",
+                "rebelnews.com",
+                "skynews.com.au",
+                "worldstar.com",
+            ]
+        ):
             try:
                 the_link = link_matches.group(0)
                 page = await to_thread(requests.get, the_link)
@@ -696,7 +688,14 @@ Always address who you are speaking to.  Always respond to the last person who h
             except Exception as e:
                 logError(room.name, "propaganda", message.body, e)
 
-        elif other_link_matches:
+        elif link_matches and any(
+            link_type in link_matches.group(0)
+            for link_type in [
+                "dailymotion.com",
+                "strawpoll.me",
+                "open.spotify.com",
+            ]
+        ):
             try:
                 the_link = link_matches.group(0)
                 page = await to_thread(requests.get, the_link)
@@ -720,7 +719,7 @@ Always address who you are speaking to.  Always respond to the last person who h
             except Exception as e:
                 logError(room.name, "kekg", message.body, e)
 
-        elif command_matches:
+        elif command_matches := command_re.findall(message.body):
             if "!stash" in message_body_lower:
                 await room.send_message("https://lmao.love/stash/")
             elif "newstash" in message_body_lower:
@@ -759,13 +758,6 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if cmd_msg.strip():
                     await room.send_message(cmd_msg)
 
-        elif re.match("ay+ lmao", message_body_lower):
-            await room.send_message(random_selection(memes["lmao"]))
-        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
-            await room.send_message(random_selection(memes["clam"]))
-        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
-            await room.send_message(random_selection(memes["lmoa"]))
-
         elif "lmao?" in message_body_lower:
             roger_messages = [
                 "sup",
@@ -777,28 +769,34 @@ Always address who you are speaking to.  Always respond to the last person who h
             ]
             await room.send_message(random_selection(roger_messages))
 
+        elif (
+            matches := [cmd for cmd in simple_meme_actions.keys() if cmd in message_body_lower]
+        ):
+            matches = matches[:3]
+            links = [meme for match in matches if (meme := simple_meme_actions.get(match))]
+            await room.send_message(" ".join(links))
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
             await room.send_message(random_selection(["tl;dr", "spam"]), delay=1)
+        elif (
+            "lil" in message_body_lower and "cnn" in message_body_lower
+        ) or message_body_lower.split().count("cnn") >= 3:
+            await room.send_message(random_selection(memes["cnn"]), delay=1)
         # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
         #     await room.send_message("https://lmao.love/infowars")
         elif "church" in message_body_lower or "satan" in message_body_lower:
             await self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
             await self.preach_the_gospel(room)
+        elif re.match("ay+ lmao", message_body_lower):
+            await room.send_message(random_selection(memes["lmao"]))
+        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
+            await room.send_message(random_selection(memes["clam"]))
+        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
+            await room.send_message(random_selection(memes["lmoa"]))
         elif "maga" in message_body_lower and "magazine" not in message_body_lower:
             await room.send_message(random_selection(memes["trump"]))
-        elif "!whatson" in message_body_lower:
-            await room.send_message("https://guide.lmao.love/")
-        elif "!jameis" in message_body_lower or "!winston" in message_body_lower:
-            await room.send_message(stash_memes["/jameis"])
-        elif "!phins" in message_body_lower:
-            await room.send_message(stash_memes["/phins"])
-        elif "!spike" in message_body_lower:
-            await room.send_message(stash_memes["/1smoke"])
         elif "tyson" in message_body_lower:
             await room.send_message(random_selection(memes["tyson"]))
-        elif "pika" in message_body_lower:
-            await room.send_message(stash_memes["/pikaa"])
         elif "propaganda" in message_body_lower:
             await room.send_message(random_selection(memes["korea"]))
         elif "xmas" in message_body_lower or "christmas" in message_body_lower:
@@ -807,27 +805,12 @@ Always address who you are speaking to.  Always respond to the last person who h
             await room.send_message(random_selection(memes["shkreli"]))
         elif "jumanji" in message_body_lower:
             await room.send_message(random_selection(memes["jumanji"]))
-        elif "devil?" in message_body_lower:
-            await room.send_message(stash_memes["/devil?"])
-        elif "go2bed" in message_body_lower:
-            await room.send_message(stash_memes["/go2bed"])
-        elif "gil2bed" in message_body_lower:
-            await room.send_message(stash_memes["/gil2bed"])
         elif (
             "ronaldo" in message_body_lower
             or "rolando" in message_body_lower
             or "penaldo" in message_body_lower
         ):
             await room.send_message(random_selection(memes["ronaldo"]))
-        elif lil_cnn or cnn_cnn_cnn:
-            await room.send_message(random_selection(memes["cnn"]), delay=1)
-        # elif "!tv" in message_body_lower:
-        #     if country_match:
-        #         country_code = countries[country_match]
-        #         country_name = country_match.title()
-        #         await room.send_message("{} TV<br/> https://lmao.love/{}/".format(country_name, country_code), use_html=True, delay=1)
-        #     else:
-        #         await room.send_message("https://lmao.love")
 
 
 if __name__ == "__main__":
