@@ -131,6 +131,15 @@ def render_history(history):
     return "".join(reversed(listory))
 
 
+roger_messages = [
+    "sup",
+    "hey girl",
+    "ayyyy",
+    "Let's get this bread",
+    "What you need?",
+    "Yo waddup",
+]
+
 simple_memes: dict[str, str] = {
     "!whatson": "https://guide.lmao.love/",
     "!jameis": stash_memes["/jameis"],
@@ -143,7 +152,21 @@ simple_memes: dict[str, str] = {
     "gil2bed": stash_memes["/gil2bed"],
 }
 
-random_meme_actions = {}
+random_memes: dict[str, list[str]] = {
+    "lmao?": roger_messages,
+    "clam": memes["clam"],
+    "lmoa": memes["lmoa"],
+    "maga": memes["trump"],
+    "tyson": memes["tyson"],
+    "propaganda": memes["korea"],
+    "xmas": memes["santa"],
+    "christmas": memes["santa"],
+    "shkreli": memes["shkreli"],
+    "jumanji": memes["jumanji"],
+    "ronaldo": memes["ronaldo"],
+    "rolando": memes["ronaldo"],
+    "penaldo": memes["ronaldo"],
+}
 
 kekg_actions = {
     "!moviespam": (kekg.movies, {"spam": True}),
@@ -761,22 +784,23 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if cmd_msg.strip():
                     await room.send_message(cmd_msg)
 
-        elif "lmao?" in message_body_lower:
-            roger_messages = [
-                "sup",
-                "hey girl",
-                "ayyyy",
-                "Let's get this bread",
-                "What you need?",
-                "Yo waddup",
-            ]
-            await room.send_message(random_selection(roger_messages))
-
         elif matches := [
             cmd for cmd in simple_memes.keys() if cmd in message_body_lower
         ]:
             matches = matches[:3]
             links = [meme for match in matches if (meme := simple_memes.get(match))]
+            await room.send_message(" ".join(links))
+        elif matches := [
+            cmd for cmd in random_memes.keys() if cmd in message_body_lower
+        ]:
+            matches = matches[:3]
+            if "spam" in message_body_lower and len(matches) == 1:
+                matches = matches * 3
+            links = [
+                meme
+                for match in matches
+                if (meme := random_selection(random_memes.get(match, [])))
+            ]
             await room.send_message(" ".join(links))
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
             await room.send_message(random_selection(["tl;dr", "spam"]), delay=1)
@@ -792,28 +816,6 @@ Always address who you are speaking to.  Always respond to the last person who h
             await self.preach_the_gospel(room)
         elif re.match("ay+ lmao", message_body_lower):
             await room.send_message(random_selection(memes["lmao"]))
-        elif re.match(".*(?<![@a-zA-Z])clam.*", message_body_lower):
-            await room.send_message(random_selection(memes["clam"]))
-        elif re.match(".*(?<![@a-zA-Z])lmoa.*", message_body_lower):
-            await room.send_message(random_selection(memes["lmoa"]))
-        elif "maga" in message_body_lower and "magazine" not in message_body_lower:
-            await room.send_message(random_selection(memes["trump"]))
-        elif "tyson" in message_body_lower:
-            await room.send_message(random_selection(memes["tyson"]))
-        elif "propaganda" in message_body_lower:
-            await room.send_message(random_selection(memes["korea"]))
-        elif "xmas" in message_body_lower or "christmas" in message_body_lower:
-            await room.send_message(random_selection(memes["santa"]))
-        elif "shkreli" in message_body_lower:
-            await room.send_message(random_selection(memes["shkreli"]))
-        elif "jumanji" in message_body_lower:
-            await room.send_message(random_selection(memes["jumanji"]))
-        elif (
-            "ronaldo" in message_body_lower
-            or "rolando" in message_body_lower
-            or "penaldo" in message_body_lower
-        ):
-            await room.send_message(random_selection(memes["ronaldo"]))
 
 
 if __name__ == "__main__":
