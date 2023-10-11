@@ -814,20 +814,26 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if (meme := random_selection(random_memes.get(match, [])))
             ]
             await room.send_message(" ".join(links))
+
+        elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
+            page = await to_thread(requests.get, "https://www.infowars.com/rss.xml")
+            soup = BeautifulSoup(page.content, "xml")
+            title_tag = soup.find("title")
+            # img_tag = soup.find("meta", attrs={"property": "og:image"})
+            await room.send_message(title_tag.text)
+
+        elif re.match("ay+ lmao", message_body_lower):
+            await room.send_message(random_selection(memes["lmao"]))
+        elif "church" in message_body_lower or "satan" in message_body_lower:
+            await self.praise_jesus(room)
+        elif "preach" in message_body_lower or "gospel" in message_body_lower:
+            await self.preach_the_gospel(room)
         elif room.name in chat["balb"] + chat["dev"] and len(message_body_lower) > 299:
             await room.send_message(random_selection(["tl;dr", "spam"]), delay=1)
         elif (
             "lil" in message_body_lower and "cnn" in message_body_lower
         ) or message_body_lower.split().count("cnn") >= 3:
             await room.send_message(random_selection(memes["cnn"]), delay=1)
-        # elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
-        #     await room.send_message("https://lmao.love/infowars")
-        elif "church" in message_body_lower or "satan" in message_body_lower:
-            await self.praise_jesus(room)
-        elif "preach" in message_body_lower or "gospel" in message_body_lower:
-            await self.preach_the_gospel(room)
-        elif re.match("ay+ lmao", message_body_lower):
-            await room.send_message(random_selection(memes["lmao"]))
 
 
 if __name__ == "__main__":
