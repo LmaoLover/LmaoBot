@@ -8,7 +8,6 @@ import asyncio
 import chatango
 import logging
 import logging.config
-from lassie import Lassie
 from bs4 import BeautifulSoup
 from pytz import timezone
 from calendar import timegm
@@ -59,12 +58,6 @@ logging_config = {
 logging.config.dictConfig(logging_config)
 
 cwd = os.path.dirname(os.path.abspath(__file__))
-
-
-def lassie():
-    lass = Lassie()
-    lass.request_opts = {"timeout": 3}
-    return lass
 
 
 def random_selection(list):
@@ -251,8 +244,14 @@ class LmaoBot(chatango.Client):
     async def preach_the_gospel(self, room):
         try:
             the_link = "http://bibledice.com/scripture.php"
-            fetch = await to_thread(lassie().fetch, the_link)
-            await room.send_message(fetch["description"])
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
+            }
+            page = await to_thread(requests.get, the_link, headers=headers)
+            soup = BeautifulSoup(page.content, "html.parser")
+            desc = soup.find("meta", attrs={"property": "og:description"})
+            if desc:
+                await room.send_message(desc.get("content"))
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
 

@@ -1,16 +1,10 @@
 import os
 import json
 import math
-from lassie import Lassie
+import requests
 from datetime import datetime, timedelta
 import pytz
 from imdb import imdb_info_by_search, imdb_printout
-
-
-def lassie():
-    lass = Lassie()
-    lass.request_opts = {"timeout": 10}
-    return lass
 
 
 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -27,8 +21,11 @@ KEKG_URL = os.environ.get("KEKG_URL")
 
 
 def fetch_kekg():
-    fetch = lassie().fetch(KEKG_URL)
-    return json.loads(fetch["html"])
+    if KEKG_URL:
+        page = requests.get(KEKG_URL)
+        return json.loads(page.content)
+    else:
+        raise ValueError("KEKG_URL is not set")
 
 
 def filter_channels(labels=[], programs=[]):

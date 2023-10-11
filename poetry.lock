@@ -153,18 +153,17 @@ tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pyte
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.9.3"
+version = "4.12.2"
 description = "Screen-scraping library"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6.0"
 files = [
-    {file = "beautifulsoup4-4.9.3-py2-none-any.whl", hash = "sha256:4c98143716ef1cb40bf7f39a8e3eec8f8b009509e74904ba3a7b315431577e35"},
-    {file = "beautifulsoup4-4.9.3-py3-none-any.whl", hash = "sha256:fff47e031e34ec82bf17e00da8f592fe7de69aeea38be00523c04623c04fb666"},
-    {file = "beautifulsoup4-4.9.3.tar.gz", hash = "sha256:84729e322ad1d5b4d25f805bfa05b902dd96450f43842c4e99067d5e1369eb25"},
+    {file = "beautifulsoup4-4.12.2-py3-none-any.whl", hash = "sha256:bd2520ca0d9d7d12694a53d44ac482d181b4ec1888909b035a3dbf40d0f57d4a"},
+    {file = "beautifulsoup4-4.12.2.tar.gz", hash = "sha256:492bbc69dca35d12daac71c4db1bfff0c876c00ef4a2ffacce226d4638eb72da"},
 ]
 
 [package.dependencies]
-soupsieve = {version = ">1.2", markers = "python_version >= \"3.0\""}
+soupsieve = ">1.2"
 
 [package.extras]
 html5lib = ["html5lib"]
@@ -296,7 +295,7 @@ aiohttp = "*"
 type = "git"
 url = "https://github.com/LmaoLover/chatango-lib.git"
 reference = "master"
-resolved_reference = "b471e57684fc03f3b0cd1decf6f01ef08608e474"
+resolved_reference = "b8225fe5d76e8d89d7a5a9e03cc7f6fde98ec5a5"
 
 [[package]]
 name = "colorama"
@@ -381,24 +380,22 @@ files = [
 
 [[package]]
 name = "html5lib"
-version = "1.0b10"
+version = "1.1"
 description = "HTML parser based on the WHATWG HTML specification"
 optional = false
-python-versions = "*"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 files = [
-    {file = "html5lib-1.0b10-py2.py3-none-any.whl", hash = "sha256:08a3efc117a4fc8c82c3c6d10d6f58ae266428d57ed50258a1466d2cd88de745"},
-    {file = "html5lib-1.0b10.tar.gz", hash = "sha256:0d5fd54d5b2b79b876007a70c033a4023577768d18022c15681c00561432a0f9"},
+    {file = "html5lib-1.1-py2.py3-none-any.whl", hash = "sha256:0d78f8fde1c230e99fe37986a60526d7049ed4bf8a9fadbad5f00e22e58e041d"},
+    {file = "html5lib-1.1.tar.gz", hash = "sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f"},
 ]
 
 [package.dependencies]
-setuptools = ">=18.5"
-six = "*"
+six = ">=1.9"
 webencodings = "*"
 
 [package.extras]
-all = ["chardet (>=2.2)", "datrie", "genshi", "lxml"]
+all = ["chardet (>=2.2)", "genshi", "lxml"]
 chardet = ["chardet (>=2.2)"]
-datrie = ["datrie"]
 genshi = ["genshi"]
 lxml = ["lxml"]
 
@@ -427,22 +424,6 @@ files = [
 [package.extras]
 docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
 testing = ["flake8 (<5)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
-
-[[package]]
-name = "lassie"
-version = "0.11.11"
-description = "Lassie is a Python library for retrieving content from websites and being returned in a pretty format."
-optional = false
-python-versions = "*"
-files = [
-    {file = "lassie-0.11.11.tar.gz", hash = "sha256:47d5b5fd44036db6730d43267e62f153e5e9b34312d9530d4fc6eac1ca0ff426"},
-]
-
-[package.dependencies]
-beautifulsoup4 = ">=4.9.0,<4.10.0"
-html5lib = "1.0b10"
-python-oembed = "*"
-requests = ">=2.18.4,<3.0.0"
 
 [[package]]
 name = "lxml"
@@ -682,16 +663,6 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
-name = "python-oembed"
-version = "0.2.4"
-description = "OEmbed consumer library for Python"
-optional = false
-python-versions = "*"
-files = [
-    {file = "python-oembed-0.2.4.tar.gz", hash = "sha256:e0804ea3bd7ab8ec1460d139b7a92b6a9e4e3cddd83012dfe30cc67e314716ea"},
-]
-
-[[package]]
 name = "pytz"
 version = "2022.7.1"
 description = "World timezone definitions, modern and historical"
@@ -781,22 +752,6 @@ urllib3 = ">=1.21.1,<3"
 [package.extras]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
-
-[[package]]
-name = "setuptools"
-version = "68.2.2"
-description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "setuptools-68.2.2-py3-none-any.whl", hash = "sha256:b454a35605876da60632df1a60f736524eb73cc47bbc9f3f1ef1b644de74fd2a"},
-    {file = "setuptools-68.2.2.tar.gz", hash = "sha256:4ac1475276d2f1c48684874089fefcd83bd7162ddaafb81fac866ba0db282a87"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-hoverxref (<2)", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8-2020", "ini2toml[lite] (>=0.9)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pip (>=19.1)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-ruff", "pytest-timeout", "pytest-xdist", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
-testing-integration = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "packaging (>=23.1)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
 name = "six"
@@ -1003,4 +958,4 @@ requests = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<4.0"
-content-hash = "2e31647500d8a86064452f2c16331ca9c60cdac5999629874d3e1cf4d358c768"
+content-hash = "750f58c7b0cb1466dd7265abc8e9c9c41ee76143969c107bc295a982d285f7ef"

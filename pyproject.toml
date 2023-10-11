@@ -9,7 +9,6 @@ readme = "README.md"
 python = ">=3.8.1,<4.0"
 requests = "^2.28.1"
 pytz = "^2022.2.1"
-lassie = "^0.11.11"
 PyYAML = "^6.0"
 youtube-search = "^2.1.1"
 wolframalpha = "^5.0.0"
@@ -18,6 +17,8 @@ python-dotenv = "^0.21.0"
 chatango-lib = {git = "https://github.com/LmaoLover/chatango-lib.git", rev = "master"}
 # chatango-lib = {path = "../chatango-lib", develop = true}
 lxml = "^4.9.3"
+beautifulsoup4 = "^4.12.2"
+html5lib = "^1.1"
 
 [build-system]
 requires = ["poetry-core"]
