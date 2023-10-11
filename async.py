@@ -100,7 +100,6 @@ with open(cwd + "/stash_memes.json", "r") as stashjson:
 stash_tuples = [(k, v) for k, v in stash_memes.items()]
 
 link_re = re.compile(r"https?://\S+")
-command_re = re.compile(r"\/[^\s]*|stash", flags=re.IGNORECASE)
 yt_re = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})"
 )
@@ -174,6 +173,11 @@ kekg_actions = {
     "!moviesalt": (kekg.movies_alt, {}),
     "!sportsalt": (kekg.sports_alt, {}),
 }
+
+meme_cmds = "|".join(
+    re.escape(cmd) for cmd in list(simple_memes.keys()) + list(random_memes.keys())
+)
+command_re = re.compile(r"\/[^\s]*|stash|ay+ lmao|" + meme_cmds, flags=re.IGNORECASE)
 
 
 class LmaoRoom(chatango.Room):
@@ -759,13 +763,24 @@ Always address who you are speaking to.  Always respond to the last person who h
                 # Plural option
                 if len(cmd_matches) == 1:
                     match = cmd_matches[0]
-                    if match == "stash" and (
-                        "stashs" in message_body_lower
-                        or "stashes" in message_body_lower
+                    if (
+                        "spam" in message_body_lower
+                        or f"{match}s" in message_body_lower
+                        or f"{match}es" in message_body_lower
                     ):
-                        cmd_matches = ["stash"] * 3
-                    elif match not in stash_memes and match[-1] == "s":
+                        cmd_matches = cmd_matches * 3
+                    elif (
+                        match not in stash_memes
+                        and match[-1] == "s"
+                        and match[:-1] in stash_memes
+                    ):
                         cmd_matches = [match[:-1]] * 3
+                    elif (
+                        match not in stash_memes
+                        and match[-2:] == "es"
+                        and match[:-2] in stash_memes
+                    ):
+                        cmd_matches = [match[:-2]] * 3
 
                 show_names = False
                 names = []
@@ -785,6 +800,15 @@ Always address who you are speaking to.  Always respond to the last person who h
                         multi_name[0] = cmd
                         names.extend(multi_name)
                         links.extend(multi_link)
+                    elif re.match("ay+ lmao", cmd):
+                        names.append(cmd)
+                        links.append(random_selection(memes["lmao"]))
+                    elif cmd in simple_memes.keys():
+                        names.append(cmd)
+                        links.append(simple_memes.get(cmd))
+                    elif cmd in random_memes.keys():
+                        names.append(cmd)
+                        links.append(random_selection(random_memes.get(cmd)))
 
                 cmd_msg = "{}{}{}".format(
                     " ".join(names[:3]) if show_names else "",
@@ -795,25 +819,6 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if cmd_msg.strip():
                     await room.send_message(cmd_msg)
 
-        elif matches := [
-            cmd for cmd in simple_memes.keys() if cmd in message_body_lower
-        ]:
-            matches = matches[:3]
-            links = [meme for match in matches if (meme := simple_memes.get(match))]
-            await room.send_message(" ".join(links))
-        elif matches := [
-            cmd for cmd in random_memes.keys() if cmd in message_body_lower
-        ]:
-            matches = matches[:3]
-            if "spam" in message_body_lower and len(matches) == 1:
-                matches = matches * 3
-            links = [
-                meme
-                for match in matches
-                if (meme := random_selection(random_memes.get(match, [])))
-            ]
-            await room.send_message(" ".join(links))
-
         elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
             page = await to_thread(requests.get, "https://www.infowars.com/rss.xml")
             soup = BeautifulSoup(page.content, "xml")
@@ -823,10 +828,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                     item.enclosure.get("url"), item.title.text, item.link.text
                 )
             )
-            raise ValueError("Value this!")
 
-        elif re.match("ay+ lmao", message_body_lower):
-            await room.send_message(random_selection(memes["lmao"]))
         elif "church" in message_body_lower or "satan" in message_body_lower:
             await self.praise_jesus(room)
         elif "preach" in message_body_lower or "gospel" in message_body_lower:
