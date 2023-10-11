@@ -817,9 +817,13 @@ Always address who you are speaking to.  Always respond to the last person who h
         elif "alex jones" in message_body_lower or "infowars" in message_body_lower:
             page = await to_thread(requests.get, "https://www.infowars.com/rss.xml")
             soup = BeautifulSoup(page.content, "xml")
-            title_tag = soup.find("title")
-            # img_tag = soup.find("meta", attrs={"property": "og:image"})
-            await room.send_message(title_tag.text)
+            item = random_selection(soup.find_all("item"))
+            await room.send_message(
+                "{}\n{}\n{}".format(
+                    item.enclosure.get("url"), item.title.text, item.link.text
+                )
+            )
+            raise ValueError("Value this!")
 
         elif re.match("ay+ lmao", message_body_lower):
             await room.send_message(random_selection(memes["lmao"]))
@@ -848,23 +852,11 @@ if __name__ == "__main__":
     asyncio.set_event_loop(loop)
 
     bot = LmaoBot(config["username"], config["password"], rooms, room_class=LmaoRoom)
-    # bot = LmaoBot(config["username"], config["password"], rooms)
-    # bot = LmaoBot(config["username"], config["password"], rooms=[], pm=True, room_class=LmaoRoom)
-    # bot = LmaoBot(
-    #     config["username"],
-    #     config["password"],
-    #     rooms,
-    #     pm=True,
-    #     room_class=LmaoRoom,
-    #     pm_class=LmaoPM,
-    # )
-    # bot = LmaoBot(rooms=rooms)
-    task = loop.create_task(bot.run())
 
     try:
-        loop.run_until_complete(task)
+        loop.run_until_complete(bot.run())
     except KeyboardInterrupt:
         print("[KeyboardInterrupt] Killed bot.")
     finally:
-        task.cancel()
+        loop.stop()
         loop.close()

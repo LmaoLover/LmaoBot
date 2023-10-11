@@ -281,7 +281,7 @@ files = [
 
 [[package]]
 name = "chatango-lib"
-version = "1.5.1"
+version = "1.5.2"
 description = "A Python library for connecting to Chatango"
 optional = false
 python-versions = ">=3.6"
