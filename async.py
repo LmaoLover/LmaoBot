@@ -761,31 +761,35 @@ Always address who you are speaking to.  Always respond to the last person who h
                 cmd_matches = [s[:-1] if s.endswith("`") else s for s in cmd_matches]
 
                 # Plural option
-                if len(cmd_matches) == 1:
-                    match = cmd_matches[0]
+                cmds_expanded = []
+                for match in cmd_matches:
                     if (
-                        "spam" in message_body_lower
-                        or f"{match}s" in message_body_lower
-                        or f"{match}es" in message_body_lower
-                    ):
-                        cmd_matches = cmd_matches * 3
-                    elif (
                         match not in stash_memes
                         and match[-1] == "s"
                         and match[:-1] in stash_memes
                     ):
-                        cmd_matches = [match[:-1]] * 3
+                        cmds_expanded.extend([match[:-1]] * 3)
                     elif (
                         match not in stash_memes
                         and match[-2:] == "es"
                         and match[:-2] in stash_memes
                     ):
-                        cmd_matches = [match[:-2]] * 3
+                        cmds_expanded.extend([match[:-2]] * 3)
+                    elif (
+                        f"{match}s" in message_body_lower
+                        or f"{match}es" in message_body_lower
+                    ):
+                        cmds_expanded.extend([match] * 3)
+                    else:
+                        cmds_expanded.append(match)
+
+                if "spam" in message_body_lower:
+                    cmds_expanded = cmds_expanded * 3
 
                 show_names = False
                 names = []
                 links = []
-                for cmd in cmd_matches:
+                for cmd in cmds_expanded:
                     if room.name in chat["phil"] and ("chop" in cmd or cmd == "/dink"):
                         names.append(cmd)
                         links.append(stash_memes["/philsdink"])
