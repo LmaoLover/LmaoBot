@@ -270,7 +270,7 @@ class LmaoBot(chatango.Client):
             if hour in {16, 17, 18, 19} and minute == 0:
                 for _, room in self.rooms.items():
                     if room.connected and (
-                        room.name in chat["kek"] or room.name in chat["dev"]
+                        room.name in chat["four"] or room.name in chat["dev"]
                     ):
                         await room.send_message(random_selection(memes["four"]))
 
@@ -328,6 +328,10 @@ class LmaoBot(chatango.Client):
     async def on_started(self):
         self.add_task(self.check_four_twenty())
         self.add_task(self.promote_norks())
+
+    async def on_task_exception(self, task):
+        e = task.exception()
+        log("errors", None, "[unknown] [unknown] {}".format(repr(e)))
 
     async def on_denied(self, room):
         log("status", None, "[{0}] Denied".format(room.name))
@@ -843,6 +847,9 @@ Always address who you are speaking to.  Always respond to the last person who h
             "lil" in message_body_lower and "cnn" in message_body_lower
         ) or message_body_lower.split().count("cnn") >= 3:
             await room.send_message(random_selection(memes["cnn"]), delay=1)
+        else:
+            if chatango.MessageFlags.CHANNEL_MOD not in message.flags:
+                log(room.name, "unhandled", "<{0}> {1}".format(user.name, message.body))
 
 
 if __name__ == "__main__":
