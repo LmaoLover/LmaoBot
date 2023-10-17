@@ -313,8 +313,9 @@ class LmaoBot(chatango.Client):
                         )
                         img = random_selection(memes["korea"])
                         await room.send_message(
-                            "{} <br/> {}".format(msg, img),
-                            use_html=True,
+                            "{}\n{}\n{}".format(
+                                msg, img, "https://www.twitch.tv/kctv_elufa"
+                            )
                         )
 
             rest_time = ((60 - minute) * 60) - second
@@ -801,7 +802,8 @@ Always address who you are speaking to.  Always respond to the last person who h
                         show_names = True
                         stash_roll = random_selection(stash_tuples)
                         names.append(stash_roll[0])
-                        links.append(stash_roll[1])
+                        link = stash_roll[1]
+                        links.append(link.split(" ")[0])
                     elif cmd in stash_memes:
                         multi_link = stash_memes.get(cmd, "").split()
                         multi_name = [""] * len(multi_link)
