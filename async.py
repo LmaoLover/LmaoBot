@@ -187,13 +187,11 @@ class LmaoRoom(chatango.Room):
         self.send_queue = asyncio.Queue()
         # Hack a smaller history size
         self._history = deque(maxlen=50)
-        # Try to push message limit
-        self._maxlen = 2996
 
         self.add_task(self._process_send_queue())
 
     async def send_message(self, message, **kwargs):
-        msg = message[: self._maxlen]
+        msg = message[: self._maxlen * 3]
 
         delay_time = kwargs.pop("delay", None)
         if delay_time:
@@ -481,7 +479,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                 except openai.error.Timeout as e:
                     fallback_mode = True
                 except Exception as e:
-                    await room.send_message("{0}".format(e))
+                    fallback_mode = True
 
             if fallback_mode:
                 try:
@@ -513,7 +511,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                         "AI was too retarded sorry @{0}.".format(user.name)
                     )
                 except Exception as e:
-                    await room.send_message("{0}".format(e))
+                    await room.send_message("Help me I died")
 
         elif yt_matches := yt_re.search(message.body):
             try:
