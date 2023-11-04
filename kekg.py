@@ -36,7 +36,7 @@ def filter_channels(labels=[], programs=[]):
     for ch in channels:
         label_match = not labels or ch["label"] in labels
         program_match = not programs or (
-            ch["broadcastnow"] and ch["broadcastnow"]["title"] in programs
+            ch.get("broadcastnow") and ch["broadcastnow"].get("title") in programs
         )
         if label_match and program_match:
             filtered.append(ch)
