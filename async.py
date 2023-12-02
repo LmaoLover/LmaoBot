@@ -409,7 +409,7 @@ Always follow CHAR and RULES as part of your behavior. After each request, respo
 Always address who you are speaking to.  Always respond to the last person who has made a request using @LmaoLover.
 """
 
-            fallback_mode = False
+            fallback_mode = True
 
             message_without_quote = re.sub(
                 r"@lmaolover: `.*`", "", message.body, flags=re.IGNORECASE
@@ -418,16 +418,18 @@ Always address who you are speaking to.  Always respond to the last person who h
                 r"@lmaolover", "", message_without_quote, flags=re.IGNORECASE
             ).strip()
 
+            if not untagged_message:
+                return
+
             mod_msg = ""
             if chatango.MessageFlags.CHANNEL_MOD in message.flags:
                 mod_msg = f"{user.name}: {message.body}\n"
 
-            if not fallback_mode and untagged_message:
-                lmao_user = "{}{}LmaoLover:".format(
-                    render_history(room.history), mod_msg
-                )
+            lmao_user = "{}{}LmaoLover:".format(render_history(room.history), mod_msg)
+            # log(room.name, "aidebug", "{}\n{}".format(lmao_system, lmao_user))
+
+            if not fallback_mode:
                 try:
-                    # log(room.name, "aidebug", "{}\n{}".format(lmao_system, lmao_user))
                     messages = []
                     messages.append(
                         {
@@ -443,14 +445,14 @@ Always address who you are speaking to.  Always respond to the last person who h
                     )
 
                     completion = await to_thread(
-                        openai.ChatCompletion.create,
+                        openai.OpenAI().chat.completions.create,
                         model="gpt-3.5-turbo",
                         messages=messages,
                         temperature=0.6,
                         max_tokens=1500,
-                        request_timeout=25,
+                        timeout=25,
                     )
-                    response = completion.choices[0].message.content
+                    response = completion.choices[0].message.content or ""
 
                     if (
                         "As an AI" in response
@@ -476,37 +478,22 @@ Always address who you are speaking to.  Always respond to the last person who h
                         fallback_mode = True
                     else:
                         await room.send_message("{0}".format(response))
-                except openai.error.Timeout as e:
-                    fallback_mode = True
                 except Exception as e:
                     fallback_mode = True
 
             if fallback_mode:
                 try:
-                    match = re.search(
-                        r"@lmaolover: `(.*)`", message.body, re.IGNORECASE
-                    )
-                    if match:
-                        quoted_text = match.group(1)
-                    else:
-                        quoted_text = ""
-                    prompt = "{}\n{} {}\n{}: {}\nLmaoLover:".format(
-                        lmao_system,
-                        "LmaoLover:" if quoted_text else "",
-                        quoted_text,
-                        user.name,
-                        untagged_message,
-                    )
+                    prompt = "{}\n{}".format(lmao_system, lmao_user)
                     completion = await to_thread(
-                        openai.Completion.create,
-                        engine="text-davinci-003",
+                        openai.OpenAI().completions.create,
+                        model="text-davinci-003",
                         prompt=prompt,
                         temperature=0.6,
-                        max_tokens=640,
-                        request_timeout=16,
+                        max_tokens=1500,
+                        timeout=25,
                     )
                     await room.send_message("{0}".format(completion.choices[0].text))
-                except openai.error.Timeout as e:
+                except openai.APITimeoutError as e:
                     await room.send_message(
                         "AI was too retarded sorry @{0}.".format(user.name)
                     )
@@ -847,9 +834,9 @@ Always address who you are speaking to.  Always respond to the last person who h
             "lil" in message_body_lower and "cnn" in message_body_lower
         ) or message_body_lower.split().count("cnn") >= 3:
             await room.send_message(random_selection(memes["cnn"]), delay=1)
-        else:
-            if chatango.MessageFlags.CHANNEL_MOD not in message.flags:
-                log(room.name, "unhandled", "<{0}> {1}".format(user.name, message.body))
+        # else:
+        #     if chatango.MessageFlags.CHANNEL_MOD not in message.flags:
+        #         log(room.name, "unhandled", "<{0}> {1}".format(user.name, message.body))
 
 
 if __name__ == "__main__":
