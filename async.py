@@ -8,7 +8,7 @@ import asyncio
 import chatango
 import logging
 import logging.config
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from pytz import timezone
 from calendar import timegm
 from datetime import datetime, timedelta
@@ -252,7 +252,7 @@ class LmaoBot(chatango.Client):
             page = await to_thread(requests.get, the_link, headers=headers)
             soup = BeautifulSoup(page.content, "html.parser")
             desc = soup.find("meta", attrs={"property": "og:description"})
-            if desc:
+            if desc and isinstance(desc, Tag):
                 await room.send_message(desc.get("content"))
         except Exception as e:
             logError(room.name, "gospel", "preach", e)
@@ -348,11 +348,11 @@ class LmaoBot(chatango.Client):
     async def on_show_flood_warning(self, room):
         log("flood", None, "[{}] flood warning".format(room.name))
 
-    async def on_show_temp_ban(self, room, time):
-        log("flood", None, "[{}] flood ban".format(room.name))
+    # async def on_show_temp_ban(self, room, time):
+    #     log("flood", None, "[{}] flood ban".format(room.name))
 
-    async def on_temp_ban(self, room, time):
-        log("flood", None, "[{}] flood ban repeat".format(room.name))
+    # async def on_temp_ban(self, room, time):
+    #     log("flood", None, "[{}] flood ban repeat".format(room.name))
 
     async def on_delete_message(self, room, message):
         user: chatango.User = message.user
@@ -507,13 +507,15 @@ Always address who you are speaking to.  Always respond to the last person who h
                     videos = await to_thread(
                         YoutubeSearch, '"' + search + '"', max_results=5
                     )
-                    results = videos.videos
-                    if len(results) > 0 and next(
-                        (res for res in results if res["id"] == search), None
-                    ):
+                    try:
+                        results = videos.videos
+                        if not isinstance(results, list):
+                            raise TypeError
+
                         result = next(
-                            (res for res in results if res["id"] == search), None
+                            (res for res in results if res.get("id") == search)
                         )
+
                         yt_img = result["thumbnails"][0]
                         title = result["title"]
                         url_suffix = re.sub(
@@ -530,7 +532,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                             "{}<br/> {}<br/> {}".format(yt_img, title, new_link),
                             use_html=True,
                         )
-                    else:
+                    except (TypeError, StopIteration):
                         await room.send_message(
                             random_selection(
                                 [
@@ -605,7 +607,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                 if len(search) > 0:
                     videos = await to_thread(YoutubeSearch, search, max_results=1)
                     results = videos.videos
-                    if len(results) > 0:
+                    if isinstance(results, list) and len(results) > 0:
                         result = results[0]
                         yt_img = result["thumbnails"][0]
                         title = result["title"]
@@ -694,7 +696,7 @@ Always address who you are speaking to.  Always respond to the last person who h
                 soup = BeautifulSoup(page.content, "html.parser")
                 title_tag = soup.find("title")
                 img_tag = soup.find("meta", attrs={"property": "og:image"})
-                if title_tag:
+                if title_tag and isinstance(img_tag, Tag):
                     await room.send_message(
                         "{}<br/> {}<br/> {}".format(
                             img_tag.get("content") if img_tag else "",
