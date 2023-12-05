@@ -172,6 +172,7 @@ kekg_actions = {
     "!shows": (kekg.shows, {}),
     "!moviesalt": (kekg.movies_alt, {}),
     "!sportsalt": (kekg.sports_alt, {}),
+    "!church": (kekg.church, {}),
 }
 
 meme_cmds = "|".join(

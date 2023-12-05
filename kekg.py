@@ -14,6 +14,7 @@ with open(cwd + "/kekg_memes.json", "r") as stashjson:
 sports_labels = kekg_config["sports_labels"]
 movies_labels = kekg_config["movies_labels"]
 shows_labels = kekg_config["shows_labels"]
+church_labels = kekg_config["church_labels"]
 number_mapping = kekg_config["number_mapping"]
 
 
@@ -158,6 +159,16 @@ def always_true(_) -> bool:
 def shows(spam=False):
     started, coming_up = starting_now(
         filter_channels(labels=shows_labels), is_show, default_now=True
+    )
+    shows = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, spam) for ch, br in shows),
+    )
+
+
+def church(spam=False):
+    started, coming_up = starting_now(
+        filter_channels(labels=church_labels), always_true, default_now=True
     )
     shows = started + coming_up
     return "\n{}".format(
