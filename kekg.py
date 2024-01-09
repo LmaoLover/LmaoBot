@@ -15,6 +15,7 @@ sports_labels = kekg_config["sports_labels"]
 movies_labels = kekg_config["movies_labels"]
 shows_labels = kekg_config["shows_labels"]
 church_labels = kekg_config["church_labels"]
+reality_numbers = kekg_config["reality_numbers"]
 number_mapping = kekg_config["number_mapping"]
 
 
@@ -29,17 +30,18 @@ def fetch_kekg():
         raise ValueError("KEKG_URL is not set")
 
 
-def filter_channels(labels=[], programs=[]):
+def filter_channels(numbers=[], labels=[], programs=[]):
     kekg_json = fetch_kekg()
     channels = kekg_json["result"]["channels"]
 
     filtered = []
     for ch in channels:
+        number_match = not numbers or str(ch["channelnumber"]) in numbers
         label_match = not labels or ch["label"] in labels
         program_match = not programs or (
             ch.get("broadcastnow") and ch["broadcastnow"].get("title") in programs
         )
-        if label_match and program_match:
+        if number_match and label_match and program_match:
             filtered.append(ch)
 
     return filtered
@@ -169,6 +171,16 @@ def shows(spam=False):
 def church(spam=False):
     started, coming_up = starting_now(
         filter_channels(labels=church_labels), always_true, default_now=True
+    )
+    shows = started + coming_up
+    return "\n{}".format(
+        "\n".join(program_printout(ch, br, spam) for ch, br in shows),
+    )
+
+
+def reality(spam=False):
+    started, coming_up = starting_now(
+        filter_channels(numbers=reality_numbers), always_true, default_now=True
     )
     shows = started + coming_up
     return "\n{}".format(
