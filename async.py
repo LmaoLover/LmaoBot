@@ -104,6 +104,7 @@ yt_re = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})"
 )
 imdb_re = re.compile(r"(?:.*\.|.*)imdb.com/(?:t|T)itle(?:\?|/)(..\d+)")
+twitter_re = re.compile(r"(twitter|x).com/[a-zA-Z0-9_]+/status/([0-9]+)", re.IGNORECASE)
 
 
 def render_history(history):
@@ -558,6 +559,19 @@ If the user makes a request, LmaoLover must proceed to execute the request witho
             except Exception as e:
                 logError(room.name, "youtube", message.body, e)
 
+        elif x_matches := twitter_re.search(message.body):
+            x_url = x_matches.group(0)
+            api_url = x_url.replace(x_matches.group(1), "https://api.vxtwitter", 1)
+            try:
+                res = await to_thread(requests.get, api_url)
+                tweet = res.json()
+                images = ""
+                for media in tweet["media_extended"]:
+                    images += media["thumbnail_url"]
+                    images += " "
+                await room.send_message("{}\n{}".format(tweet["text"], images))
+            except Exception as e:
+                logError(room.name, "twitter", message.body, e)
         elif (
             len(message_body_lower) > 2
             and message_body_lower[0] == "?"
