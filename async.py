@@ -486,7 +486,7 @@ If the user makes a request, LmaoLover must proceed to execute the request witho
                         )
                         fallback_mode = True
                     else:
-                        await room.send_message("{0}".format(response))
+                        await room.send_message("{0}".format(response.replace("<", " ").replace(">", " ")))
                 except Exception as e:
                     fallback_mode = True
 
