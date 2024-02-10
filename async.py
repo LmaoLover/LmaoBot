@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import openai
 import kekg
+import kodi
 from imdb import imdb_info_by_id, imdb_info_by_search, imdb_printout
 
 
@@ -175,6 +176,7 @@ kekg_actions = {
     "!sportsalt": (kekg.sports_alt, {}),
     "!church": (kekg.church, {}),
     "!reality": (kekg.reality, {}),
+    "!p": (kodi.progress, {}),
 }
 
 meme_cmds = "|".join(
@@ -487,7 +489,9 @@ If the user makes a request, LmaoLover must proceed to execute the request witho
                         )
                         fallback_mode = True
                     else:
-                        await room.send_message("{0}".format(response.replace("<", " ").replace(">", " ")))
+                        await room.send_message(
+                            "{0}".format(response.replace("<", " ").replace(">", " "))
+                        )
                 except Exception as e:
                     fallback_mode = True
 
@@ -751,7 +755,7 @@ If the user makes a request, LmaoLover must proceed to execute the request witho
                 logError(room.name, "link", message.body, e)
 
         elif (
-            matches := [cmd for cmd in kekg_actions.keys() if cmd in message_body_lower]
+            matches := [cmd for cmd in kekg_actions.keys() if cmd == message_body_lower.strip()]
         ) and room.name in chat["kek"] + chat["dev"]:
             match = max(matches, key=len)
             try:
