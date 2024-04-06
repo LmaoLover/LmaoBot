@@ -96,6 +96,23 @@ def egg():
     return "\n" + "\n".join(lines)
 
 
+def march():
+    channels = filter_channels(numbers=["503","683","551","552"])
+    lines = []
+    for ch in channels:
+        now = ch.get("broadcastnow")
+        if now:
+            channel = number_mapping.get(str(ch.get("channelnumber")), ch.get("label"))
+            on_now = now.get("title", " ")
+            desc = now.get("plot")
+            desc = desc.replace("No. ", "#")
+            desc = desc.replace("St.", "Saint")
+            desc = desc[: desc.find(".")] if "." in desc else desc
+            lines.append(f"<b>{on_now}</b> - {channel}\n{desc}")
+    lines.append("<b>CBS on /kek | truTV on /alt | TNT on /alt2 | TBS on /alt3</b>")
+    return "\n" + "\n".join(lines)
+
+
 def is_show(broadcast) -> bool:
     return broadcast.get("runtime", 0) <= 60
 
