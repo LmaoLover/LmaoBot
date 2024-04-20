@@ -161,6 +161,7 @@ random_memes: dict[str, list[str]] = {
     "ronaldo": memes["ronaldo"],
     "rolando": memes["ronaldo"],
     "penaldo": memes["ronaldo"],
+    "dance": memes["dance"],
 }
 
 kekg_actions = {
