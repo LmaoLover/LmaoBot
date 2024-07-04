@@ -9,7 +9,7 @@ def web_result_to_link_desc(result):
     pass
 
 def search_top(query):
-    return fetch_brave(query)["web"]["results"]
+    return fetch_brave(query).get("web", {}).get("results",[])
 
 def fetch_brave(query):
     if BRAVE_URL and BRAVE_AUTH:
@@ -21,8 +21,8 @@ def fetch_brave(query):
         params = {
             "country": "us",
             "search_lang": "en",
-            "count": "3",
-            "safesearch": "strict",
+            "count": "10",
+            "safesearch": "off",
             "units": "imperial",
             "result_filter": "web",
             "spellcheck": "0",
