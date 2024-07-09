@@ -17,8 +17,8 @@ python-dotenv = "^0.21.0"
 lxml = "^4.9.3"
 beautifulsoup4 = "^4.12.2"
 html5lib = "^1.1"
-# chatango-lib = "^1.5.4"
-chatango-lib = {path = "../chatango-lib", develop = true}
+chatango-lib = "^1.5.4"
+# chatango-lib = {path = "../chatango-lib", develop = true}
 
 [build-system]
 requires = ["poetry-core"]

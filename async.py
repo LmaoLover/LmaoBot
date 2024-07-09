@@ -606,7 +606,9 @@ LmaoLover never posts links or images, and instead will give a detailed verbal d
         ):
             try:
                 results = await to_thread(
-                    wolfram_client.query, message_body_lower[2:].strip()
+                    wolfram_client.query,
+                    message_body_lower[2:].strip(),
+                    units="imperial",
                 )
                 if results["@success"]:
                     first_result = next(results.results, None)
