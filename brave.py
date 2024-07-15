@@ -8,10 +8,10 @@ BRAVE_AUTH = os.environ.get("BRAVE_AUTH")
 def web_result_to_link_desc(result):
     pass
 
-def search_top(query):
-    return fetch_brave(query).get("web", {}).get("results",[])
+def search_top(query, count=10):
+    return fetch_brave(query, count).get("web", {}).get("results",[])
 
-def fetch_brave(query):
+def fetch_brave(query, count=10):
     if BRAVE_URL and BRAVE_AUTH:
         headers = {
             "Accept": "application/json",
@@ -21,7 +21,7 @@ def fetch_brave(query):
         params = {
             "country": "us",
             "search_lang": "en",
-            "count": "10",
+            "count": count,
             "safesearch": "off",
             "units": "imperial",
             "result_filter": "web",
