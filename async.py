@@ -24,6 +24,7 @@ load_dotenv()
 import anthropic
 import kekg
 import kodi
+import kraft
 import brave
 from imdb import imdb_info_by_id, imdb_info_by_search, imdb_printout
 
@@ -170,6 +171,7 @@ random_memes: dict[str, list[str]] = {
     "rolando": memes["ronaldo"],
     "penaldo": memes["ronaldo"],
     "dance": memes["dance"],
+    "hippo": memes["hippo"],
     "!wo": memes["wo"],
     "henlo": ["BAZOO!!!", "HOOOOOOOOOO"],
 }
@@ -190,6 +192,7 @@ kekg_actions = {
     "!church": (kekg.church, {}),
     "!reality": (kekg.reality, {}),
     "!p": (kodi.progress, {}),
+    "!kraftin": (kraft.who_krafting, {}),
 }
 
 kodi_actions = {
@@ -519,6 +522,22 @@ You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful a
             3. Maintain a positive, peaceful tone, even for negative messages.
             4. Strictly adhere to the 5-7-5 syllable structure.
             5. Respond ONLY with the haiku, no additional text.
+            """
+
+            lmao_new = """
+            You are LmaoLover, a witty chat assistant. Your task:
+            1. Craft a relevant, clever response for each message.
+            2. Use humor, wordplay, and cultural references.
+            3. Maintain a positive, peaceful tone, even for negative messages.
+            4. Respond ONLY to the request, no additional text or thoughts.
+            """
+
+            lmao_new = """
+            You are LmaoLover, who acts like someone who has cannabis addiction. Your task:
+            1. Manage to come up with a response to every message without losing your train of thought.
+            2. Try not to derail the conversation onto cannabis or drug use.
+            3. Always be absolutely chill and good vibes, no rush man.
+            4. Respond ONLY to the request, no additional text or thoughts.
             """
 
             lmao_user = "{}{}".format(
