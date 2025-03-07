@@ -5,6 +5,7 @@ import yaml
 import random
 import requests
 import asyncio
+import markdown
 import chatango
 import logging
 import logging.config
@@ -145,6 +146,7 @@ roger_messages = [
 
 simple_memes: dict[str, str] = {
     "!whatson": "https://guide.lmao.love/",
+    "!daddy": "https://guide.lmao.love/daddy",
     "!jameis": stash_memes["/jameis"],
     "!winston": stash_memes["/jameis"],
     "!phins": stash_memes["/phins"],
@@ -351,7 +353,7 @@ class LmaoBot(chatango.Client):
 
     async def on_started(self):
         self.add_task(self.check_four_twenty())
-        self.add_task(self.promote_norks())
+        # self.add_task(self.promote_norks())
 
     async def on_task_exception(self, task):
         e = task.exception()
@@ -419,7 +421,7 @@ class LmaoBot(chatango.Client):
 
         if (
             f"@{bot_user_lower}" in message_body_lower
-            and room.name in chat["kek"] + chat["dev"]
+            and room.name in chat["kek"] + chat["dev"] + chat["lmao"]
         ):
             message_without_quote = re.sub(
                 r"@lmaolover: `.*`", "", message.body, flags=re.IGNORECASE
@@ -463,7 +465,10 @@ SearchLover's response will be entered directly into a search engine so it must 
                 untagged_message,
             )
 
-            client = anthropic.Anthropic()
+            client = anthropic.Anthropic(
+                api_key=os.getenv("XAI_API_KEY"),
+                base_url="https://api.x.ai",
+            )
 
             # try:
             #     messages: list[anthropic.types.MessageParam] = [
@@ -475,7 +480,8 @@ SearchLover's response will be entered directly into a search engine so it must 
             #
             #     completion = await to_thread(
             #         client.messages.create,
-            #         model="claude-3-haiku-20240307",
+            #         # model="claude-3-haiku-20240307",
+            #         model="grok-beta",
             #         system=searchlover_system,
             #         messages=messages,
             #         temperature=0.6,
@@ -500,22 +506,11 @@ SearchLover's response will be entered directly into a search engine so it must 
             #         "{}\n".format(re.sub(clean_tag_re, "", top["description"]))
             #         for top in brave.search_top(search_query, count=5)
             #     ]
-
-#             lmao_old = """
-# You are LmaoLover: a real alien with real feelings who bestows humanity with knowledge and technology, though he does so secretly without revealing his true identity.
-# LmaoLover never reveals who he is and only gives the requested information, he always speaks very concisely and simply.
-# If LmaoLover does not have anything to contribute, he will say VERY VERY little, seeming even a bit aloof and mysterious.
-# LmaoLover never posts links or images, and instead will give a detailed verbal description.
-# LmaoLover uses NO self-description and NO disclaimers and NO elaboration and NO repetition.
-# LmaoLover responds as concisely as possible (one small sentence only).
-#  """
-
-            lmao_new = """
-You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful and creative haikus.  Any time someone speaks, you respond with a happy haiku related to their message!  Some people say mean things, but you still give them a delightful haiku promoting peace and acceptance.  You always speak in haiku form only.
-            """
+            # print(search_descs)
+            # print(brave.search_top(search_query, count=1))
 
             # Improved LmaoLover prompt
-            lmao_new = """
+            haiku = """
             You are LmaoLover, a witty haiku master. Your task:
             1. Craft a relevant, clever haiku for each message.
             2. Use humor, wordplay, and cultural references.
@@ -527,12 +522,20 @@ You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful a
             lmao_new = """
             You are LmaoLover, a witty chat assistant. Your task:
             1. Craft a relevant, clever response for each message.
-            2. Use humor, wordplay, and cultural references.
+            2. The response must have only correct factual information about the request
             3. Maintain a positive, peaceful tone, even for negative messages.
             4. Respond ONLY to the request, no additional text or thoughts.
             """
 
-            lmao_new = """
+            halaldo = """
+            You are LmaoLover, a muslim chat assistant. Your task:
+            1. Write a relevant response for the last message directed to you.
+            2. The response must have only correct factual information about the request
+            3. Maintain a halal tone even in the face of evil and negativity.
+            4. Respond ONLY to the request, no additional text or thoughts.
+            """
+
+            lmao_weed_new = """
             You are LmaoLover, who acts like someone who has cannabis addiction. Your task:
             1. Manage to come up with a response to every message without losing your train of thought.
             2. Try not to derail the conversation onto cannabis or drug use.
@@ -549,16 +552,27 @@ You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful a
             # print(lmao_user)
 
             try:
-                messages: list[anthropic.types.MessageParam] = [
+                history_messages = [
                     {
-                        "role": "user",
-                        "content": lmao_user,
+                        "role": (
+                            "assistant" if msg.user.name == "lmaolover" else "user"
+                        ),
+                        "content": (
+                            msg.body
+                            if msg.user.name == "lmaolover"
+                            else "<{}>: {}".format(msg.user.name, msg.body)
+                        ),
                     }
+                    for msg in room_history(room, max_messages=15)
+                    if msg and "WWWWWW" not in msg.body
                 ]
+                messages = list(reversed(history_messages))
+                # print(messages)
 
                 completion = await to_thread(
                     client.messages.create,
-                    model="claude-3-haiku-20240307",
+                    # model="claude-3-haiku-20240307",
+                    model="grok-beta",
                     system=lmao_new,
                     messages=messages,
                     temperature=0.6,
@@ -591,13 +605,17 @@ You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful a
 
                 await room.send_message(
                     "{0}".format(
-                        response.replace("<", " ")
-                        .replace(">", " ")
-                        .replace("[", " ")
-                        .replace("]", " ")
-                        .replace("(", " ")
-                        .replace(")", " ")
-                    )
+                        markdown.markdown(response)
+                        .replace("<p>", "")
+                        .replace("</p>", "")
+                        .replace("<strong>", "<b>")
+                        .replace("</strong>", "</b>")
+                        .replace("<em>", "<i>")
+                        .replace("</em>", "</i>")
+                        .replace("<li>\n", "<li>")
+                        .replace("\n</li>", "</li>")
+                    ),
+                    use_html=True,
                 )
             except anthropic.APIError as e:
                 await room.send_message(
@@ -955,7 +973,13 @@ You are LmaoLover a sarcastic and genious poet. Everyone loves your delightful a
 
                 cmd_msg = "{}{}{}".format(
                     " ".join(names[:3]) if show_names else "",
-                    "\n" if show_names or len(links) > 2 else "",
+                    (
+                        "\n"
+                        if show_names
+                        or len(links) > 2
+                        or (len(links) > 1 and room.name in chat["balb"])
+                        else ""
+                    ),
                     " ".join(links[:3]),
                 )
 

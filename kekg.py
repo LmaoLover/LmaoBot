@@ -12,6 +12,7 @@ with open(cwd + "/kekg_memes.json", "r") as stashjson:
     kekg_config = json.load(stashjson)
 
 sports_labels = kekg_config["sports_labels"]
+sports_junk_labels = kekg_config["sports_junk_labels"]
 movies_labels = kekg_config["movies_labels"]
 shows_labels = kekg_config["shows_labels"]
 church_labels = kekg_config["church_labels"]
@@ -30,16 +31,17 @@ def fetch_kekg():
         raise ValueError("KEKG_URL is not set")
 
 
-def filter_channels(numbers=[], labels=[], programs=[]):
+def filter_channels(numbers=[], labels=[], programs=[], reject=False):
     kekg_json = fetch_kekg()
     channels = kekg_json["result"]["channels"]
 
     filtered = []
     for ch in channels:
-        number_match = not numbers or str(ch["channelnumber"]) in numbers
-        label_match = not labels or ch["label"] in labels
+        number_match = not numbers or (str(ch["channelnumber"]) in numbers) ^ reject
+        label_match = not labels or (ch["label"] in labels) ^ reject
         program_match = not programs or (
-            ch.get("broadcastnow") and ch["broadcastnow"].get("title") in programs
+            ch.get("broadcastnow")
+            and (ch["broadcastnow"].get("title") in programs) ^ reject
         )
         if number_match and label_match and program_match:
             filtered.append(ch)
@@ -97,7 +99,7 @@ def egg():
 
 
 def march():
-    channels = filter_channels(numbers=["503","683","551","552"])
+    channels = filter_channels(numbers=["503", "683", "551", "552"])
     lines = []
     for ch in channels:
         now = ch.get("broadcastnow")
@@ -226,7 +228,11 @@ def movies_alt():
 
 
 def sports_alt():
-    started, coming_up = starting_now(filter_channels(), sports_genre, default_now=True)
+    started, coming_up = starting_now(
+        filter_channels(labels=sports_junk_labels, reject=True),
+        sports_genre,
+        default_now=True,
+    )
     shows = started + coming_up
     return "\n{}".format(
         "\n".join(program_printout(ch, br, plot=False) for ch, br in shows),
