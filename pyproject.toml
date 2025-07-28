@@ -7,13 +7,11 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4.0"
+python = ">=3.10,<4.0"
 requests = "^2.28.1"
 pytz = "^2022.2.1"
 PyYAML = "^6.0"
 youtube-search = "^2.1.1"
-wolframalpha = "^5.0.0"
-openai = "^0.27.2"
 python-dotenv = "^0.21.0"
 lxml = "^4.9.3"
 beautifulsoup4 = "^4.12.2"
@@ -23,6 +21,8 @@ chatango-lib = {git = "https://github.com/LmaoLover/chatango-lib.git", rev = "ma
 anthropic = "^0.49.0"
 mcstatus = "^11.1.1"
 markdown = "^3.7"
+guessit = "^3.8.0"
+rapidfuzz = "^3.13.0"
 
 [build-system]
 requires = ["poetry-core"]

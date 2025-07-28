@@ -111,7 +111,7 @@ def march():
             desc = desc.replace("St.", "Saint")
             desc = desc[: desc.find(".")] if "." in desc else desc
             lines.append(f"<b>{on_now}</b> - {channel}\n{desc}")
-    lines.append("<b>CBS on /kek | truTV on /alt | TNT on /alt2 | TBS on /alt3</b>")
+    lines.append("<b>/mad?ch=cbs</b> or <b>tbs</b> or <b>trutv</b> or <b>tnt</b>")
     return "\n" + "\n".join(lines)
 
 
