@@ -5,8 +5,8 @@ import yaml
 import random
 import requests
 import asyncio
-import markdown
 import chatango
+import unicodedata
 import logging
 import logging.config
 from bs4 import BeautifulSoup, Tag
@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from time import gmtime
 from youtube_search import YoutubeSearch
 from urllib.parse import urlparse, urlunparse, parse_qs
-from wolframalpha import Client
 from collections import deque
 from asyncio import to_thread
 from dotenv import load_dotenv
@@ -26,8 +25,17 @@ import anthropic
 import kekg
 import kodi
 import kraft
-import brave
+import daddy
+import tvpass
+import wolfram
 from imdb import imdb_info_by_id, imdb_info_by_search, imdb_printout
+from claude import (
+    LLMClient,
+    format_chat_history,
+    format_response_for_html,
+    check_model_refusal,
+    SYSTEM_PROMPTS,
+)
 
 
 class LowercaseFormatter(logging.Formatter):
@@ -94,10 +102,6 @@ for filename in os.listdir(cwd):
 with open(cwd + "/rooms.yaml", "r") as roomsyaml:
     chat = yaml.safe_load(roomsyaml)
 
-with open(cwd + "/wolfram.yaml", "r") as wolframyaml:
-    keys = yaml.safe_load(wolframyaml)
-    wolfram_client = Client(keys["app_id"])
-
 with open(cwd + "/stash_memes.json", "r") as stashjson:
     stash_memes = json.load(stashjson)
 
@@ -110,6 +114,20 @@ yt_re = re.compile(
 imdb_re = re.compile(r"(?:.*\.|.*)imdb.com/(?:t|T)itle(?:\?|/)(..\d+)")
 twitter_re = re.compile(r"(twitter|x).com/[a-zA-Z0-9_]+/status/([0-9]+)", re.IGNORECASE)
 clean_tag_re = re.compile("<.*?>")
+
+LEET_MAP = str.maketrans(
+    {
+        "0": "o",
+        "1": "l",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "8": "b",
+        "@": "a",
+        "$": "s",
+    }
+)
 
 
 def room_history(room, max_messages: int = 20) -> list[chatango.Message]:
@@ -136,17 +154,17 @@ def render_history(history, max_length=999):
 
 
 roger_messages = [
-    "sup",
-    "hey girl",
-    "ayyyy",
+    "I am here",
+    "I'm here for you",
+    "ayyyy lmaoo",
     "Let's get this bread",
-    "What you need?",
-    "Yo waddup",
+    "What do you need?",
 ]
 
 simple_memes: dict[str, str] = {
     "!whatson": "https://guide.lmao.love/",
     "!daddy": "https://guide.lmao.love/daddy",
+    "!tvpass": "https://guide.lmao.love/tvpass",
     "!jameis": stash_memes["/jameis"],
     "!winston": stash_memes["/jameis"],
     "!phins": stash_memes["/phins"],
@@ -172,6 +190,7 @@ random_memes: dict[str, list[str]] = {
     "ronaldo": memes["ronaldo"],
     "rolando": memes["ronaldo"],
     "penaldo": memes["ronaldo"],
+    "milady": memes["milady"],
     "dance": memes["dance"],
     "hippo": memes["hippo"],
     "!wo": memes["wo"],
@@ -194,11 +213,51 @@ kekg_actions = {
     "!church": (kekg.church, {}),
     "!reality": (kekg.reality, {}),
     "!p": (kodi.progress, {}),
+    "!rm": (kodi.random_movie, {}),
     "!kraftin": (kraft.who_krafting, {}),
 }
 
 kodi_actions = {
     "!pixel": (kodi.pixel_toggle, {}),
+}
+
+lmao_actions = {
+    "!help": (daddy.help, {}),
+    "!now": (daddy.now, {}),
+    "!tv": (daddy.tv, {}),
+    "!crick": (daddy.crick, {}),
+    "!cricket": (daddy.crick, {}),
+    "!ufc": (daddy.ufc, {}),
+    "!afl": (daddy.afl, {}),
+    "!mlb": (daddy.baseball, {}),
+    "!hoops": (daddy.hoops, {}),
+    "!nba": (daddy.nba, {}),
+    "!foot": (daddy.foot, {}),
+    "!egg": (daddy.egg, {}),
+    "!hockey": (daddy.hockey, {}),
+    "!tennis": (daddy.tennis, {}),
+    "!motor": (daddy.motor, {}),
+    "!ppv": (daddy.ppv, {}),
+    "!ski": (daddy.ski, {}),
+    "!golf": (daddy.golf, {}),
+    "!wwe": (daddy.wwe, {}),
+    "!misc": (daddy.misc, {}),
+    "!moviespam": (tvpass.movies, {"spam": True}),
+    "!moviesspam": (tvpass.movies, {"spam": True, "ai": True}),
+    "!imdbspam": (tvpass.movies, {"spam": True, "imdb": True}),
+    "!movies": (tvpass.movies, {}),
+    "!sports": (daddy.guide_link, {}),
+    "!tvpasssports": (tvpass.sports, {"ai": True}),
+    "!shows": (tvpass.shows, {}),
+    "!showsai": (tvpass.shows, {"ai": True}),
+    "!news": (tvpass.news, {}),
+    "!newsai": (tvpass.news, {"ai": True}),
+    "!moviesalt": (tvpass.movies_alt, {}),
+    "!tvpasssportsalt": (tvpass.sports_alt, {"ai": True}),
+    "!church": (tvpass.church, {}),
+    "!churchai": (tvpass.church, {"ai": True}),
+    "!reality": (tvpass.reality, {}),
+    "!realityai": (tvpass.reality, {"ai": True}),
 }
 
 meme_cmds = "|".join(
@@ -218,14 +277,34 @@ class LmaoRoom(chatango.Room):
         self.add_task(self._process_send_queue())
 
     async def send_message(self, message, **kwargs):
-        msg = message[: self._maxlen * 3]
+        message = message[: self._maxlen * 9]  # Max spam limit
+        max_length = self._maxlen - 200
 
         delay_time = kwargs.pop("delay", None)
         if delay_time:
             self.add_delayed_task(delay_time, self.send_message(message, **kwargs))
             return
 
-        await self.send_queue.put((msg, kwargs))
+        # Handle sending very large message in chunks
+        if len(message) <= max_length:
+            await self.send_queue.put((message, kwargs))
+        else:
+            # If message is too long, split on '\n' and send in order
+            chunks = []
+            current_chunk = []
+
+            for line in message.split("\n"):
+                if sum(len(s) for s in current_chunk) + len(line) + 1 > max_length:
+                    chunks.append("\n".join(current_chunk))
+                    current_chunk = []
+                current_chunk.append(line)
+
+            if current_chunk:
+                chunks.append("\n".join(current_chunk))
+
+            for chunk in chunks:
+                await self.send_queue.put((chunk, kwargs))
+                await asyncio.sleep(0.1)
 
     async def _process_send_queue(self):
         while True:
@@ -397,15 +476,19 @@ class LmaoBot(chatango.Client):
         message_body_lower: str = message.body.lower()
         bot_user_lower: str = self.username.lower()
 
+        message_body_normal = (
+            unicodedata.normalize("NFKD", message_body_lower)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+        message_body_alpha = re.sub(
+            r"[^a-z]", "", message_body_normal.translate(LEET_MAP)
+        )
+
         if chatango.MessageFlags.CHANNEL_MOD in message.flags:
             log(room.name, "mod", "<{0}> {1}".format(user.name, message.body))
         else:
             log(room.name, None, "<{0}> {1}".format(user.name, message.body))
-
-        if user.isanon:
-            if message_body_lower.strip() == "= =":
-                await room.send_message("{0}".format(random_selection(memes["eye"])))
-            return
 
         if user.name.lower() == bot_user_lower:
             return
@@ -418,6 +501,36 @@ class LmaoBot(chatango.Client):
             )
 
         link_matches = link_re.search(message.body)
+
+        if room.name in chat["lmao"] + chat["dev"] and any(
+            banned_word in message_body_alpha for banned_word in memes["banned"]
+        ):
+            await room.delete_message(message)
+            return
+
+        if user.isanon:
+            if message_body_lower.strip() == "= =":
+                await room.send_message("{0}".format(random_selection(memes["eye"])))
+            elif link_matches and any(
+                link_type in link_matches.group(0)
+                for link_type in [
+                    "kfcclub.com.tw",
+                    "ntdtv.com.tw",
+                    "image.pizzahut.com.tw",
+                ]
+            ):
+                try:
+                    the_link = link_matches.group(0)
+                    await room.send_message(
+                        "{}".format(
+                            the_link,
+                        ),
+                        use_html=True,
+                    )
+                except Exception as e:
+                    logError(room.name, "propaganda", message.body, e)
+
+            return
 
         if (
             f"@{bot_user_lower}" in message_body_lower
@@ -441,186 +554,52 @@ class LmaoBot(chatango.Client):
             if chatango.MessageFlags.CHANNEL_MOD in message.flags:
                 mod_msg = f"{user.name}: {message.body}\n"
 
-            # Use context to formulate a search query
-
-            searchlover_system = """
-SearchLover is a search engine expert. Given the context of a conversation, he can formulate a search engine query which will produce the best information to further the conversation. He will even use the OR operator to join multiple relevant queries to increase the likelihood of good information.
-
-SearchLover has extremely high emotional intelligence and charisma, and is expert at reading the room.  He can tell when a "request" is actually just personal conversation.  Search information is only requested when factual information is needed in the conversation, otherwise he responds simply "no search needed" with no elaboration.
-
-SearchLover's response will be entered directly into a search engine so it must be only the search query with NO extra explanation! This is critical! SearchLover must only reply with the relevant search query!
-"""
-            # Improved SearchLover prompt
-            searchlover_system = """
-            You are SearchLover, an expert at formulating concise, targeted search queries. Given a conversation context:
-            1. Identify the key information need.
-            2. Create a short, precise search query using Boolean operators if needed.
-            3. Focus on factual queries; for casual conversation, respond "no search needed".
-            4. Provide ONLY the search query, no explanation.
-            """
-
-            searchlover_user = 'Use the following chat conversation as context:\n\n{}{}\n\nIgnore irrelevant information and formulate a direct search query which will best produce the information needed to respond to this request: "{}"'.format(
-                render_history(room.history, max_length=151),
-                mod_msg,
-                untagged_message,
-            )
-
-            client = anthropic.Anthropic(
+            # Initialize our LLM client
+            llm_client = LLMClient(
                 api_key=os.getenv("XAI_API_KEY"),
                 base_url="https://api.x.ai",
             )
 
-            # try:
-            #     messages: list[anthropic.types.MessageParam] = [
-            #         {
-            #             "role": "user",
-            #             "content": searchlover_user,
-            #         }
-            #     ]
-            #
-            #     completion = await to_thread(
-            #         client.messages.create,
-            #         # model="claude-3-haiku-20240307",
-            #         model="grok-beta",
-            #         system=searchlover_system,
-            #         messages=messages,
-            #         temperature=0.6,
-            #         max_tokens=1500,
-            #         timeout=16,
-            #     )
-            #
-            #     search_query = completion.content[0].text or untagged_message
-            #
-            #     log(
-            #         room.name,
-            #         "aisearch",
-            #         f"{user.name}: {message.body}\n{search_query}",
-            #     )
-            # except Exception as e:
-            #     search_query = untagged_message
-            #
-            # if "no search needed" in search_query.lower():
-            #     search_descs = ["No information needed"]
-            # else:
-            #     search_descs = [
-            #         "{}\n".format(re.sub(clean_tag_re, "", top["description"]))
-            #         for top in brave.search_top(search_query, count=5)
-            #     ]
-            # print(search_descs)
-            # print(brave.search_top(search_query, count=1))
-
-            # Improved LmaoLover prompt
-            haiku = """
-            You are LmaoLover, a witty haiku master. Your task:
-            1. Craft a relevant, clever haiku for each message.
-            2. Use humor, wordplay, and cultural references.
-            3. Maintain a positive, peaceful tone, even for negative messages.
-            4. Strictly adhere to the 5-7-5 syllable structure.
-            5. Respond ONLY with the haiku, no additional text.
-            """
-
-            lmao_new = """
-            You are LmaoLover, a witty chat assistant. Your task:
-            1. Craft a relevant, clever response for each message.
-            2. The response must have only correct factual information about the request
-            3. Maintain a positive, peaceful tone, even for negative messages.
-            4. Respond ONLY to the request, no additional text or thoughts.
-            """
-
-            halaldo = """
-            You are LmaoLover, a muslim chat assistant. Your task:
-            1. Write a relevant response for the last message directed to you.
-            2. The response must have only correct factual information about the request
-            3. Maintain a halal tone even in the face of evil and negativity.
-            4. Respond ONLY to the request, no additional text or thoughts.
-            """
-
-            lmao_weed_new = """
-            You are LmaoLover, who acts like someone who has cannabis addiction. Your task:
-            1. Manage to come up with a response to every message without losing your train of thought.
-            2. Try not to derail the conversation onto cannabis or drug use.
-            3. Always be absolutely chill and good vibes, no rush man.
-            4. Respond ONLY to the request, no additional text or thoughts.
-            """
-
-            lmao_user = "{}{}".format(
-                # "\n".join(search_descs),
-                render_history(room_history(room, max_messages=1), max_length=511),
-                mod_msg,
-            )
-            # log(room.name, "aidebug", "{}\n{}".format(lmao_new, lmao_user))
-            # print(lmao_user)
+            # Choose model
+            model = "grok-3-beta"
 
             try:
-                history_messages = [
-                    {
-                        "role": (
-                            "assistant" if msg.user.name == "lmaolover" else "user"
-                        ),
-                        "content": (
-                            msg.body
-                            if msg.user.name == "lmaolover"
-                            else "<{}>: {}".format(msg.user.name, msg.body)
-                        ),
-                    }
-                    for msg in room_history(room, max_messages=15)
-                    if msg and "WWWWWW" not in msg.body
-                ]
-                messages = list(reversed(history_messages))
-                # print(messages)
+                # Format history messages appropriately for the model
+                history_messages = format_chat_history(
+                    room_history(room, max_messages=15),
+                    format_type="messages",  # For grok-beta, we use the messages format
+                    filter_text="WWWWWW",
+                    cutoff_message="lmao?",
+                    cutoff_user=user.name,
+                )
 
-                completion = await to_thread(
-                    client.messages.create,
-                    # model="claude-3-haiku-20240307",
-                    model="grok-beta",
-                    system=lmao_new,
-                    messages=messages,
+                # Run the LLM in a separate thread to not block
+                response = await to_thread(
+                    llm_client.generate_response,
+                    system_prompt=SYSTEM_PROMPTS["chat_assistant"],
+                    messages=history_messages,
+                    model=model,
                     temperature=0.6,
                     max_tokens=1500,
                     timeout=16,
                 )
-                response = completion.content[0].text or ""
 
-                if (
-                    "As an AI" in response
-                    or "I don't have the ability" in response
-                    or "I'm not able to" in response
-                    or "I'm unable to" in response
-                    or "can't fulfill" in response
-                    or "cannot fulfill" in response
-                    or "can't assist" in response
-                    or "cannot assist" in response
-                    or "can't comply" in response
-                    or "cannot comply" in response
-                    or "can't engage" in response
-                    or "cannot engage" in response
-                    or "can't generate" in response
-                    or "cannot generate" in response
-                ):
+                # Check for refusal language specific to the model
+                if check_model_refusal(response, model=model):
                     log(
                         room.name,
                         "aidebug",
                         f"{user.name}: {message.body}\n{response}",
                     )
 
+                # Format and send the message
                 await room.send_message(
-                    "{0}".format(
-                        markdown.markdown(response)
-                        .replace("<p>", "")
-                        .replace("</p>", "")
-                        .replace("<strong>", "<b>")
-                        .replace("</strong>", "</b>")
-                        .replace("<em>", "<i>")
-                        .replace("</em>", "</i>")
-                        .replace("<li>\n", "<li>")
-                        .replace("\n</li>", "</li>")
-                    ),
+                    format_response_for_html(response),
                     use_html=True,
                 )
+
             except anthropic.APIError as e:
-                await room.send_message(
-                    "AI was too retarded sorry @{0}.".format(user.name)
-                )
+                await room.send_message(f"AI was too retarded sorry @{user.name}.")
             except Exception as e:
                 await room.send_message("Help me I died")
 
@@ -692,47 +671,10 @@ SearchLover's response will be entered directly into a search engine so it must 
             and message_body_lower[2] != "?"
         ):
             try:
-                results = await to_thread(
-                    wolfram_client.query,
-                    message_body_lower[2:].strip(),
-                    units="imperial",
+                wolfram_response = wolfram.chatbot_wolfram_query(
+                    message_body_lower[2:].strip()
                 )
-                if results["@success"]:
-                    first_result = next(results.results, None)
-                    if first_result:
-                        await room.send_message(first_result.text)
-                    else:
-                        pod_results = None
-                        for pod in results.pods:
-                            if pod.id == "Results":
-                                pod_results = pod
-                                break
-                        if pod_results:
-                            await room.send_message(pod_results.subpod.plaintext)
-                        else:
-                            await room.send_message(
-                                random_selection(
-                                    [
-                                        "AI can not compute",
-                                        "AI stumped",
-                                        "wot?",
-                                        "AI is not that advanced",
-                                        "uhh",
-                                    ]
-                                ),
-                            )
-                else:
-                    await room.send_message(
-                        random_selection(
-                            [
-                                "AI can not compute",
-                                "AI stumped",
-                                "wot?",
-                                "AI is not that advanced",
-                                "uhh",
-                            ]
-                        ),
-                    )
+                await room.send_message(wolfram_response)
             except Exception as e:
                 logError(room.name, "wolframalpha", message.body, e)
 
@@ -827,6 +769,7 @@ SearchLover's response will be entered directly into a search engine so it must 
                 "rebelnews.com",
                 "skynews.com.au",
                 "worldstar.com",
+                "www.shenyuncreations.com",
             ]
         ):
             try:
@@ -837,10 +780,9 @@ SearchLover's response will be entered directly into a search engine so it must 
                 img_tag = soup.find("meta", attrs={"property": "og:image"})
                 if title_tag and isinstance(img_tag, Tag):
                     await room.send_message(
-                        "{}<br/> {}<br/> {}".format(
+                        "{}<br/> {}".format(
                             img_tag.get("content") if img_tag else "",
                             title_tag.get_text(),
-                            the_link,
                         ),
                         use_html=True,
                     )
@@ -904,6 +846,36 @@ SearchLover's response will be entered directly into a search engine so it must 
                 await room.send_message("Guide not available rn")
             except Exception as e:
                 logError(room.name, "kekg", message.body, e)
+
+        elif (
+            matches := [
+                cmd for cmd in lmao_actions.keys() if cmd == message_body_lower.strip()
+            ]
+        ) and room.name in chat["lmao"] + chat["dev"]:
+            match = max(matches, key=len)
+            try:
+                params = lmao_actions[match]
+                coroutine_func, kwargs = params
+                if match in [
+                    "!tvpasssports",
+                    "!tvpasssportsalt",
+                    "!realityai",
+                    "!showsai",
+                    "!moviesspam",
+                    "!churchai",
+                    "!newsai",
+                ]:
+                    await room.send_message(
+                        f"⚠️ <b>Please wait...</b>\n<i>Generating your spam...</i>",
+                        use_html=True,
+                    )
+                k_msg = await to_thread(coroutine_func, **kwargs)
+                k_msg = k_msg if k_msg.strip() else "None on atm"
+                await room.send_message(k_msg, use_html=True)
+            except json.JSONDecodeError as e:
+                await room.send_message("Guide not available rn")
+            except Exception as e:
+                logError(room.name, "lmao", message.body, e)
 
         elif command_matches := command_re.findall(message.body):
             if "!stash" in message_body_lower:
