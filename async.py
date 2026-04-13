@@ -533,9 +533,16 @@ class LmaoBot(chatango.Client):
             return
 
         if (
-            f"@{bot_user_lower}" in message_body_lower
-            and room.name in chat["kek"] + chat["dev"] + chat["lmao"]
+            room.name in chat["lmao"]
+            and not all(
+                word in {"ayy", "lmao", "penaldo", "ronaldo", "milady", "spam"}
+                for word in message_body_lower.split()
+            )
         ):
+            await room.delete_message(message)
+            return
+
+        if f"@{bot_user_lower}" in message_body_lower and room.name in chat["dev"]:
             message_without_quote = re.sub(
                 r"@lmaolover: `.*`", "", message.body, flags=re.IGNORECASE
             )
@@ -834,7 +841,7 @@ class LmaoBot(chatango.Client):
             matches := [
                 cmd for cmd in kekg_actions.keys() if cmd == message_body_lower.strip()
             ]
-        ) and room.name in chat["kek"] + chat["dev"]:
+        ) and room.name in chat["kek"]:
             match = max(matches, key=len)
             try:
                 params = kekg_actions[match]

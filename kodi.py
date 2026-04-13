@@ -160,12 +160,6 @@ def group_and_deduplicate(filenames, threshold=92):
                 group.append(j)
                 used.add(j)
 
-        # if len(group) > 1:
-        #     print("Group:")
-        #     for idx in group:
-        #         print("  ", filenames[idx])
-        #     print()
-
         # Keep only the first item of the group
         deduped.append(filenames[group[0]])
 
