@@ -6,6 +6,48 @@ from datetime import datetime, timedelta
 import pytz
 from imdb import imdb_info_by_search, imdb_printout
 
+"""
+Usage Examples
+"""
+
+# import kekg
+
+# kekg_actions = {
+#     "!moviespam": (kekg.movies, {"spam": True}),
+#     "!moviesspam": (kekg.movies, {"spam": True}),
+#     "!imdbspam": (kekg.movies, {"spam": True, "imdb": True}),
+#     "!movies": (kekg.movies, {}),
+#     "!sports": (kekg.sports, {}),
+#     "!egg": (kekg.egg, {}),
+#     "!march": (kekg.march, {}),
+#     "!showspam": (kekg.shows, {"spam": True}),
+#     "!showsspam": (kekg.shows, {"spam": True}),
+#     "!shows": (kekg.shows, {}),
+#     "!moviesalt": (kekg.movies_alt, {}),
+#     "!sportsalt": (kekg.sports_alt, {}),
+#     "!church": (kekg.church, {}),
+#     "!reality": (kekg.reality, {}),
+#     "!p": (kodi.progress, {}),
+#     "!rm": (kodi.random_movie, {}),
+# }
+
+# elif (
+#     matches := [
+#         cmd for cmd in kekg_actions.keys() if cmd == message_body_lower.strip()
+#     ]
+# ) and room.name in chat["kek"]:
+#     match = max(matches, key=len)
+#     try:
+#         params = kekg_actions[match]
+#         coroutine_func, kwargs = params
+#         k_msg = await to_thread(coroutine_func, **kwargs)
+#         k_msg = k_msg if k_msg.strip() else "None on atm"
+#         await room.send_message(k_msg, use_html=True)
+#     except json.JSONDecodeError as e:
+#         await room.send_message("Guide not available rn")
+#     except Exception as e:
+#         logError(room.name, "kekg", message.body, e)
+
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 with open(cwd + "/kekg_memes.json", "r") as stashjson:

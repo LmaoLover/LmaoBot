@@ -353,8 +353,8 @@ wheels = [
 
 [[package]]
 name = "chatango-lib"
-version = "1.6.0"
-source = { git = "https://github.com/LmaoLover/chatango-lib.git?branch=master#1fa3d256d425bc42299fe71daf940c9b18e25589" }
+version = "1.7.0"
+source = { git = "https://github.com/LmaoLover/chatango-lib.git?branch=master#599c6e878fce3991eeaa2cff5fe6ead67f5953a3" }
 dependencies = [
     { name = "aiohttp" },
 ]

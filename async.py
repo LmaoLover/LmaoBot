@@ -22,11 +22,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import anthropic
-import kekg
-import kodi
 import kraft
-import daddy
-import tvpass
 import wolfram
 from imdb import imdb_info_by_id, imdb_info_by_search, imdb_printout
 from claude import (
@@ -70,6 +66,7 @@ logging_config = {
 logging.config.dictConfig(logging_config)
 
 cwd = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(cwd + "/logs", exist_ok=True)
 
 
 def random_selection(list):
@@ -162,9 +159,6 @@ roger_messages = [
 ]
 
 simple_memes: dict[str, str] = {
-    "!whatson": "https://guide.lmao.love/",
-    "!daddy": "https://guide.lmao.love/daddy",
-    "!tvpass": "https://guide.lmao.love/tvpass",
     "!jameis": stash_memes["/jameis"],
     "!winston": stash_memes["/jameis"],
     "!phins": stash_memes["/phins"],
@@ -197,67 +191,8 @@ random_memes: dict[str, list[str]] = {
     "henlo": ["BAZOO!!!", "HOOOOOOOOOO"],
 }
 
-kekg_actions = {
-    "!moviespam": (kekg.movies, {"spam": True}),
-    "!moviesspam": (kekg.movies, {"spam": True}),
-    "!imdbspam": (kekg.movies, {"spam": True, "imdb": True}),
-    "!movies": (kekg.movies, {}),
-    "!sports": (kekg.sports, {}),
-    "!egg": (kekg.egg, {}),
-    "!march": (kekg.march, {}),
-    "!showspam": (kekg.shows, {"spam": True}),
-    "!showsspam": (kekg.shows, {"spam": True}),
-    "!shows": (kekg.shows, {}),
-    "!moviesalt": (kekg.movies_alt, {}),
-    "!sportsalt": (kekg.sports_alt, {}),
-    "!church": (kekg.church, {}),
-    "!reality": (kekg.reality, {}),
-    "!p": (kodi.progress, {}),
-    "!rm": (kodi.random_movie, {}),
-    "!kraftin": (kraft.who_krafting, {}),
-}
-
-kodi_actions = {
-    "!pixel": (kodi.pixel_toggle, {}),
-}
-
 lmao_actions = {
-    "!help": (daddy.help, {}),
-    "!now": (daddy.now, {}),
-    "!tv": (daddy.tv, {}),
-    "!crick": (daddy.crick, {}),
-    "!cricket": (daddy.crick, {}),
-    "!ufc": (daddy.ufc, {}),
-    "!afl": (daddy.afl, {}),
-    "!mlb": (daddy.baseball, {}),
-    "!hoops": (daddy.hoops, {}),
-    "!nba": (daddy.nba, {}),
-    "!foot": (daddy.foot, {}),
-    "!egg": (daddy.egg, {}),
-    "!hockey": (daddy.hockey, {}),
-    "!tennis": (daddy.tennis, {}),
-    "!motor": (daddy.motor, {}),
-    "!ppv": (daddy.ppv, {}),
-    "!ski": (daddy.ski, {}),
-    "!golf": (daddy.golf, {}),
-    "!wwe": (daddy.wwe, {}),
-    "!misc": (daddy.misc, {}),
-    "!moviespam": (tvpass.movies, {"spam": True}),
-    "!moviesspam": (tvpass.movies, {"spam": True, "ai": True}),
-    "!imdbspam": (tvpass.movies, {"spam": True, "imdb": True}),
-    "!movies": (tvpass.movies, {}),
-    "!sports": (daddy.guide_link, {}),
-    "!tvpasssports": (tvpass.sports, {"ai": True}),
-    "!shows": (tvpass.shows, {}),
-    "!showsai": (tvpass.shows, {"ai": True}),
-    "!news": (tvpass.news, {}),
-    "!newsai": (tvpass.news, {"ai": True}),
-    "!moviesalt": (tvpass.movies_alt, {}),
-    "!tvpasssportsalt": (tvpass.sports_alt, {"ai": True}),
-    "!church": (tvpass.church, {}),
-    "!churchai": (tvpass.church, {"ai": True}),
-    "!reality": (tvpass.reality, {}),
-    "!realityai": (tvpass.reality, {"ai": True}),
+    "!kraftin": (kraft.who_krafting, {}),
 }
 
 meme_cmds = "|".join(
@@ -533,7 +468,8 @@ class LmaoBot(chatango.Client):
             return
 
         if (
-            room.name in chat["lmao"]
+            os.environ.get("LOCKDOWN_MODE")
+            and room.name in chat["lmao"]
             and not all(
                 word in {"ayy", "lmao", "penaldo", "ronaldo", "milady", "spam"}
                 for word in message_body_lower.split()
@@ -542,7 +478,10 @@ class LmaoBot(chatango.Client):
             await room.delete_message(message)
             return
 
-        if f"@{bot_user_lower}" in message_body_lower and room.name in chat["dev"]:
+        if (
+            f"@{bot_user_lower}" in message_body_lower
+            and room.name in chat["lmao"] + chat["dev"]
+        ):
             message_without_quote = re.sub(
                 r"@lmaolover: `.*`", "", message.body, flags=re.IGNORECASE
             )
@@ -557,10 +496,6 @@ class LmaoBot(chatango.Client):
             if not untagged_message:
                 return
 
-            mod_msg = ""
-            if chatango.MessageFlags.CHANNEL_MOD in message.flags:
-                mod_msg = f"{user.name}: {message.body}\n"
-
             # Initialize our LLM client
             llm_client = LLMClient(
                 api_key=os.getenv("XAI_API_KEY"),
@@ -568,7 +503,7 @@ class LmaoBot(chatango.Client):
             )
 
             # Choose model
-            model = "grok-3-beta"
+            model = "grok-4-1-fast-non-reasoning"
 
             try:
                 # Format history messages appropriately for the model
@@ -579,6 +514,12 @@ class LmaoBot(chatango.Client):
                     cutoff_message="lmao?",
                     cutoff_user=user.name,
                 )
+
+                if chatango.MessageFlags.CHANNEL_MOD in message.flags and isinstance(
+                    history_messages, list
+                ):
+                    mod_msg = f"<{user.name}>: {message.body}\n"
+                    history_messages.append({"role": "user", "content": mod_msg})
 
                 # Run the LLM in a separate thread to not block
                 response = await to_thread(
@@ -610,7 +551,9 @@ class LmaoBot(chatango.Client):
             except Exception as e:
                 await room.send_message("Help me I died")
 
-        elif yt_matches := yt_re.search(message.body):
+        elif (yt_matches := yt_re.search(message.body)) and room.name not in chat[
+            "bro"
+        ]:
             try:
                 search = yt_matches.group(1)
                 if len(search) > 0:
@@ -689,6 +632,7 @@ class LmaoBot(chatango.Client):
             len(message_body_lower) > 1
             and message_body_lower[0] == "?"
             and message_body_lower[1] != "?"
+            and room.name not in chat["bro"]
         ):
             try:
                 search = message_body_lower[1:].strip()
@@ -815,46 +759,6 @@ class LmaoBot(chatango.Client):
                 logError(room.name, "link", message.body, e)
 
         elif (
-            (
-                matches := [
-                    cmd
-                    for cmd in kodi_actions.keys()
-                    if cmd == message_body_lower.strip()
-                ]
-            )
-            and room.name in chat["kek"] + chat["dev"]
-            and user.name.lower() in chat["mods"]
-        ):
-            match = max(matches, key=len)
-            try:
-                params = kodi_actions[match]
-                coroutine_func, kwargs = params
-                k_msg = await to_thread(coroutine_func, **kwargs)
-                k_msg = k_msg if k_msg.strip() else "Nope"
-                await room.send_message(k_msg, use_html=True)
-            except json.JSONDecodeError as e:
-                await room.send_message("Not possible")
-            except Exception as e:
-                logError(room.name, "kodi", message.body, e)
-
-        elif (
-            matches := [
-                cmd for cmd in kekg_actions.keys() if cmd == message_body_lower.strip()
-            ]
-        ) and room.name in chat["kek"]:
-            match = max(matches, key=len)
-            try:
-                params = kekg_actions[match]
-                coroutine_func, kwargs = params
-                k_msg = await to_thread(coroutine_func, **kwargs)
-                k_msg = k_msg if k_msg.strip() else "None on atm"
-                await room.send_message(k_msg, use_html=True)
-            except json.JSONDecodeError as e:
-                await room.send_message("Guide not available rn")
-            except Exception as e:
-                logError(room.name, "kekg", message.body, e)
-
-        elif (
             matches := [
                 cmd for cmd in lmao_actions.keys() if cmd == message_body_lower.strip()
             ]
@@ -969,11 +873,9 @@ class LmaoBot(chatango.Client):
             page = await to_thread(requests.get, "https://www.infowars.com/rss.xml")
             soup = BeautifulSoup(page.content, "xml")
             item = random_selection(soup.find_all("item"))
-            await room.send_message(
-                "{}\n{}\n{}".format(
-                    item.enclosure.get("url"), item.title.text, item.link.text
-                )
-            )
+            rss_link = item.link.get_text(strip=True) if item.link else ""
+            rss_title = item.title.get_text(strip=True) if item.title else ""
+            await room.send_message("{}\n{}".format(rss_title, rss_link))
 
         elif "church" in message_body_lower or "satan" in message_body_lower:
             await self.praise_jesus(room)

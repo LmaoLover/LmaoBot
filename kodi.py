@@ -9,6 +9,39 @@ import threading
 from guessit import guessit
 from rapidfuzz import fuzz
 
+"""
+Usage Examples
+"""
+
+# import kodi
+
+# kodi_actions = {
+#     "!pixel": (kodi.pixel_toggle, {}),
+# }
+
+# elif (
+#     (
+#         matches := [
+#             cmd
+#             for cmd in kodi_actions.keys()
+#             if cmd == message_body_lower.strip()
+#         ]
+#     )
+#     and room.name in chat["kek"] + chat["dev"]
+#     and user.name.lower() in chat["mods"]
+# ):
+#     match = max(matches, key=len)
+#     try:
+#         params = kodi_actions[match]
+#         coroutine_func, kwargs = params
+#         k_msg = await to_thread(coroutine_func, **kwargs)
+#         k_msg = k_msg if k_msg.strip() else "Nope"
+#         await room.send_message(k_msg, use_html=True)
+#     except json.JSONDecodeError as e:
+#         await room.send_message("Not possible")
+#     except Exception as e:
+#         logError(room.name, "kodi", message.body, e)
+
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 with open(cwd + "/kekg_memes.json", "r") as stashjson:
